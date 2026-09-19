@@ -204,8 +204,7 @@ if nav_selection == "Dashboard Home":
             )
             try:
                 gdf = gpd.read_file(selected_home_zone)
-                st.success(f"Loaded: {selected_home_zone.replace('.geojson', '')} ({len(gdf)} features)")
-                render_multi_layer_map([selected_home_zone], height=240)
+                render_multi_layer_map([selected_home_zone], height=260)
             except Exception as e:
                 st.error(f"Error reading layer: {e}")
         else:
