@@ -87,19 +87,18 @@ def load_project_data():
 
 df_projects = load_project_data()
 
-# --- HELPER FUNCTION FOR POLYLINE / BOUNDS PYDECK RENDERING ---
+# --- HELPER FUNCTION FOR SMART MAP RENDERING ---
 def render_multi_layer_map(selected_files, height=400):
     layers = []
     all_gdfs = []
     
-    # Distinct bright color palette for the metes and bounds lines
     color_palette = [
-        [88, 166, 255, 255],   # Bright Blue
-        [46, 160, 67, 255],    # Bright Green
-        [210, 153, 34, 255],   # Bright Yellow/Orange
-        [248, 81, 73, 255],    # Bright Red
-        [137, 87, 229, 255],   # Bright Purple
-        [57, 211, 83, 255],    # Neon Green
+        [88, 166, 255, 120],   # Transparent Blue fill
+        [46, 160, 67, 120],    # Transparent Green fill
+        [210, 153, 34, 120],   # Transparent Yellow fill
+        [248, 81, 73, 120],    # Transparent Red fill
+        [137, 87, 229, 120],   # Transparent Purple fill
+        [57, 211, 83, 120],    # Transparent Neon Green fill
     ]
     
     for idx, file_name in enumerate(selected_files):
@@ -110,19 +109,31 @@ def render_multi_layer_map(selected_files, height=400):
                     gdf = gdf.to_crs(epsg=4326)
                 all_gdfs.append(gdf)
                 
-                color = color_palette[idx % len(color_palette)]
-                
-                # Configured as Polyline/Bounds only (filled=False)
-                layer = pdk.Layer(
-                    "GeoJsonLayer",
-                    json.loads(gdf.to_json()),
-                    pickable=True,
-                    stroked=True,
-                    filled=False,          # Removes polygon fill color
-                    get_line_color=color,  # Applies color to boundaries
-                    get_line_width=40,     # Thickness of metes and bounds
-                    line_width_min_pixels=3,
-                )
+                # If it's the master PFEZ boundary, make it a crisp outer outline only
+                if "PFEZ Boundaries" in file_name:
+                    layer = pdk.Layer(
+                        "GeoJsonLayer",
+                        json.loads(gdf.to_json()),
+                        pickable=True,
+                        stroked=True,
+                        filled=False,
+                        get_line_color=[255, 255, 255, 255], # Bright white outer boundary
+                        get_line_width=45,
+                        line_width_min_pixels=3,
+                    )
+                else:
+                    # All other sub-zones render as filled polygons
+                    color = color_palette[idx % len(color_palette)]
+                    layer = pdk.Layer(
+                        "GeoJsonLayer",
+                        json.loads(gdf.to_json()),
+                        pickable=True,
+                        stroked=True,
+                        filled=True,
+                        get_fill_color=color,
+                        get_line_color=[255, 255, 255, 200],
+                        get_line_width=20,
+                    )
                 layers.append(layer)
         except Exception:
             pass
@@ -142,7 +153,7 @@ def render_multi_layer_map(selected_files, height=400):
             layers=layers,
             initial_view_state=view_state,
             map_style="dark",
-            tooltip={"text": "Metes & Bounds Boundary Feature"}
+            tooltip={"text": "Zoning Layer Feature"}
         )
         st.pydeck_chart(r, use_container_width=True, height=height)
     else:
@@ -227,9 +238,9 @@ elif nav_selection == "Spatial Map Viewer":
     geojson_files = sorted([f for f in os.listdir(".") if f.endswith(".geojson")])
     
     if geojson_files:
-        st.write("Select one or multiple QGIS vector boundaries to outline on the master map:")
+        st.write("Select one or multiple QGIS vector layers to display on the master map:")
         selected_layers = st.multiselect(
-            "Active Zoning Boundary Layers", 
+            "Active Zoning Layers", 
             geojson_files, 
             default=geojson_files[:3],
             format_func=lambda x: x.replace(".geojson", "")
@@ -238,7 +249,7 @@ elif nav_selection == "Spatial Map Viewer":
         if selected_layers:
             render_multi_layer_map(selected_layers, height=550)
         else:
-            st.info("Please select at least one layer above to render the map outlines.")
+            st.info("Please select at least one layer above to render the map.")
     else:
         st.warning("No `.geojson` files found in the repository.")
 
