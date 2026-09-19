@@ -72,10 +72,14 @@ except Exception:
 
 st.sidebar.markdown(
     """
-    <div style='font-size: 13px; color: #FFFFFF; line-height: 1.5; font-weight: bold;'>
-    ENGR. AIRSAD R. OLOMODIN, MBA, CBE<br><br>
-    📱 0975-256-9055 / 0929-336-7787<br><br>
-    ✉️ airsadolomodin@gmail.com
+    <div style='font-size: 11px; color: #FFFFFF; font-weight: bold; margin-top: 8px; line-height: 1.3;'>
+        ENGR. AIRSAD R. OLOMODIN, MBA, CBE
+    </div>
+    <div style='font-size: 11px; color: #C9D1D9; margin-top: 6px; line-height: 1.2;'>
+        📱 0975-256-9055 / 0929-336-7787
+    </div>
+    <div style='font-size: 11px; color: #C9D1D9; margin-top: 4px; line-height: 1.2;'>
+        ✉️ airsadolomodin@gmail.com
     </div>
     """,
     unsafe_allow_html=True
