@@ -143,7 +143,26 @@ if nav_selection == "Dashboard Home":
             try:
                 gdf = gpd.read_file(selected_zone)
                 st.success(f"Loaded layer: {selected_zone} ({len(gdf)} records)")
-                st.dataframe(gdf.drop(columns="geometry", errors="ignore"), height=180, use_container_width=True)
+                
+                # Render the map directly here as well!
+                if not gdf.empty:
+                    if gdf.crs is not None and gdf.crs != "EPSG:4326":
+                        gdf = gdf.to_crs(epsg=4326)
+                    centroid = gdf.geometry.unary_union.centroid
+                    
+                    fig_home_map = px.choropleth_mapbox(
+                        gdf,
+                        geojson=gdf.geometry,
+                        locations=gdf.index,
+                        center={"lat": centroid.y, "lon": centroid.x},
+                        zoom=13,
+                        opacity=0.6,
+                        mapbox_style="carto-positron",
+                        height=280
+                    )
+                    fig_home_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+                    st.plotly_chart(fig_home_map, use_container_width=True)
+
             except Exception as e:
                 st.error(f"Error reading layer: {e}")
         else:
@@ -151,7 +170,7 @@ if nav_selection == "Dashboard Home":
 
     with bot_col2:
         st.markdown("### Monitoring & Evaluation (M&E) / Risk Matrix")
-        st.dataframe(df_projects, height=220, use_container_width=True)
+        st.dataframe(df_projects, height=360, use_container_width=True)
 
 # --- 2. INVESTMENT PHASING VIEW ---
 elif nav_selection == "Investment Phasing":
@@ -170,11 +189,9 @@ elif nav_selection == "Spatial Map Viewer":
             gdf = gpd.read_file(selected_layer)
             st.success(f"Successfully loaded layer: **{selected_layer}** ({len(gdf)} features found)")
             
-            # Display attribute table
             st.subheader("Layer Attribute Table")
             st.dataframe(gdf.drop(columns="geometry", errors="ignore"), use_container_width=True)
 
-            # Render polygon boundaries using Plotly choropleth mapbox
             if not gdf.empty:
                 st.subheader("Spatial Map View")
                 if gdf.crs is not None and gdf.crs != "EPSG:4326":
