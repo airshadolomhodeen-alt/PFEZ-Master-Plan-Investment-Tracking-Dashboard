@@ -14,18 +14,32 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# --- CUSTOM ENTERPRISE STYLING ---
+# --- CUSTOM ENTERPRISE & MOBILE-RESPONSIVE STYLING ---
 st.markdown(
     """
     <style>
         .main { background-color: #0E1117; }
-        .block-container { padding-top: 0.5rem; padding-bottom: 1rem; }
+        .block-container { padding-top: 0.5rem; padding-bottom: 1rem; padding-left: 1.5rem; padding-right: 1.5rem; }
         h1, h2, h3 { color: #FAFAFA; }
         .stMetric {
             background-color: #161B22;
             border: 1px solid #30363D;
             padding: 10px;
             border-radius: 6px;
+        }
+        
+        /* Mobile Screen Responsiveness */
+        @media (max-width: 768px) {
+            .block-container {
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+            div[data-testid="column"] {
+                width: 100% !important;
+                flex: 100% !important;
+                min-width: 100% !important;
+                margin-bottom: 10px;
+            }
         }
     </style>
 """,
@@ -36,8 +50,8 @@ st.markdown(
 st.markdown(
     """
     <div style="background-color: #161B22; padding: 15px; border-radius: 8px; border: 1px solid #30363D; text-align: center; margin-bottom: 20px;">
-        <h2 style="color: #58A6FF; margin: 0; font-size: 22px;">POLLOC FREEDOM AND ECONOMIC ZONE (PFEZ): MASTER PLAN & INVESTMENT TRACKING DASHBOARD</h2>
-        <p style="color: #8B949E; margin: 5px 0 0 0; font-size: 13px;">Data Source: Phase 3 SDPIP Report / Bangsamoro Economic Zone Authority (BEZA)</p>
+        <h2 style="color: #58A6FF; margin: 0; font-size: 20px;">POLLOC FREEDOM AND ECONOMIC ZONE (PFEZ): MASTER PLAN & INVESTMENT TRACKING DASHBOARD</h2>
+        <p style="color: #8B949E; margin: 5px 0 0 0; font-size: 12px;">Data Source: Phase 3 SDPIP Report / Bangsamoro Economic Zone Authority (BEZA)</p>
     </div>
 """,
     unsafe_allow_html=True,
@@ -304,7 +318,7 @@ elif nav_selection == "Spatial Map Viewer":
         if selected_layers:
             render_multi_layer_map(selected_layers, height=550)
         else:
-            st.info("Please select at least one layer above to render the map.")
+            st.info("Select at least one layer above to render the map.")
     else:
         st.warning("No `.geojson` files found in the repository. Please ensure QGIS vector exports are placed in the app directory.")
 
