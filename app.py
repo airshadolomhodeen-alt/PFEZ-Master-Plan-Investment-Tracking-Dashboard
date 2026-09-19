@@ -50,7 +50,7 @@ st.markdown(
 st.markdown(
     """
     <div style="background-color: #161B22; padding: 15px; border-radius: 8px; border: 1px solid #30363D; text-align: center; margin-bottom: 20px;">
-        <h2 style="color: #58A6FF; margin: 0; font-size: 20px;">POLLOC FREEDOM AND ECONOMIC ZONE (PFEZ): MASTER PLAN & INVESTMENT TRACKING DASHBOARD</h2>
+        <h2 style="color: #58A6FF; margin: 0; font-size: 20px;">POLLOC FREEPORT AND ECONOMIC ZONE (PFEZ): MASTER PLAN & INVESTMENT TRACKING DASHBOARD</h2>
         <p style="color: #8B949E; margin: 5px 0 0 0; font-size: 12px;">Data Source: Phase 3 SDPIP Report / Bangsamoro Economic Zone Authority (BEZA)</p>
     </div>
 """,
