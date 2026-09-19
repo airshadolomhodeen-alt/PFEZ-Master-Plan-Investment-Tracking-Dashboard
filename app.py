@@ -58,7 +58,7 @@ nav_selection = st.sidebar.radio(
 
 st.sidebar.markdown("---")
 st.sidebar.info(
-    "**Project:** PFEZ Master Plan\n**Timeline:** 2026–2040[cite: 1]\n**Total Budget:** PhP 5.3B[cite: 1]"
+    "**Project:** PFEZ Master Plan\n**Timeline:** 2026–2040[cite: 1]\n**Total Budget:** PhP 5.3B[cite: 1]\n**Zoning Layers:** 12 Active Files[cite: 4, 11]"
 )
 
 # --- MOCK PROJECT DATA ---
@@ -87,39 +87,65 @@ def load_project_data():
 
 df_projects = load_project_data()
 
-# --- HELPER FUNCTION FOR PYDECK MAPS ---
-def render_geojson_map(gdf, height=400):
-    if gdf.crs is not None and gdf.crs != "EPSG:4326":
-        gdf = gdf.to_crs(epsg=4326)
+# --- HELPER FUNCTION FOR MULTI-LAYER PYDECK RENDERING ---
+def render_multi_layer_map(selected_files, height=400):
+    layers = []
+    all_gdfs = []
     
-    centroid = gdf.geometry.unary_union.centroid
+    # Distinct color palette mapping for different zones
+    color_palette = [
+        [88, 166, 255, 140],   # Blue
+        [46, 160, 67, 140],    # Green
+        [210, 153, 34, 140],   # Yellow/Orange
+        [248, 81, 73, 140],    # Red
+        [137, 87, 229, 140],   # Purple
+        [57, 211, 83, 140],    # Bright Green
+    ]
     
-    # Create PyDeck GeoJsonLayer
-    layer = pdk.Layer(
-        "GeoJsonLayer",
-        json.loads(gdf.to_json()),
-        pickable=True,
-        stroked=True,
-        filled=True,
-        get_fill_color=[88, 166, 255, 120],  # Transparent blue matching theme
-        get_line_color=[255, 255, 255, 200],  # White border lines
-        get_line_width=30,
-    )
-    
-    view_state = pdk.ViewState(
-        latitude=centroid.y,
-        longitude=centroid.x,
-        zoom=13,
-        pitch=0,
-    )
-    
-    r = pdk.Deck(
-        layers=[layer],
-        initial_view_state=view_state,
-        map_style="dark",
-        tooltip={"text": "Zone Feature ID: {id}"}
-    )
-    st.pydeck_chart(r, use_container_width=True, height=height)
+    for idx, file_name in enumerate(selected_files):
+        try:
+            gdf = gpd.read_file(file_name)
+            if not gdf.empty:
+                if gdf.crs is not None and gdf.crs != "EPSG:4326":
+                    gdf = gdf.to_crs(epsg=4326)
+                all_gdfs.append(gdf)
+                
+                color = color_palette[idx % len(color_palette)]
+                
+                layer = pdk.Layer(
+                    "GeoJsonLayer",
+                    json.loads(gdf.to_json()),
+                    pickable=True,
+                    stroked=True,
+                    filled=True,
+                    get_fill_color=color,
+                    get_line_color=[255, 255, 255, 200],
+                    get_line_width=20,
+                )
+                layers.append(layer)
+        except Exception:
+            pass
+
+    if all_gdfs:
+        combined_gdf = pd.concat(all_gdfs, ignore_index=True)
+        centroid = combined_gdf.geometry.unary_union.centroid
+        
+        view_state = pdk.ViewState(
+            latitude=centroid.y,
+            longitude=centroid.x,
+            zoom=13,
+            pitch=0,
+        )
+        
+        r = pdk.Deck(
+            layers=layers,
+            initial_view_state=view_state,
+            map_style="dark",
+            tooltip={"text": "Layer Feature loaded successfully"}
+        )
+        st.pydeck_chart(r, use_container_width=True, height=height)
+    else:
+        st.warning("Select at least one valid geojson layer to display on the map.")
 
 # --- 1. DASHBOARD HOME VIEW ---
 if nav_selection == "Dashboard Home":
@@ -168,15 +194,14 @@ if nav_selection == "Dashboard Home":
 
     bot_col1, bot_col2 = st.columns(2)
     with bot_col1:
-        st.markdown("### Spatial Development & Land Use Map Viewer")
+        st.markdown("### Spatial Zoning Quick Viewer")
         geojson_files = [f for f in os.listdir(".") if f.endswith(".geojson")]
         if geojson_files:
-            selected_zone = st.selectbox("Filter by Zone Layer", geojson_files, key="home_zone")
+            selected_home_zone = st.selectbox("Select Zone Layer", geojson_files, key="home_zone")
             try:
-                gdf = gpd.read_file(selected_zone)
-                st.success(f"Loaded layer: {selected_zone} ({len(gdf)} records)")
-                if not gdf.empty:
-                    render_geojson_map(gdf, height=250)
+                gdf = gpd.read_file(selected_home_zone)
+                st.success(f"Loaded: {selected_home_zone} ({len(gdf)} features)")
+                render_multi_layer_map([selected_home_zone], height=240)
             except Exception as e:
                 st.error(f"Error reading layer: {e}")
         else:
@@ -184,7 +209,7 @@ if nav_selection == "Dashboard Home":
 
     with bot_col2:
         st.markdown("### Monitoring & Evaluation (M&E) / Risk Matrix")
-        st.dataframe(df_projects, height=360, use_container_width=True)
+        st.dataframe(df_projects, height=330, use_container_width=True)
 
 # --- 2. INVESTMENT PHASING VIEW ---
 elif nav_selection == "Investment Phasing":
@@ -197,21 +222,13 @@ elif nav_selection == "Spatial Map Viewer":
     geojson_files = [f for f in os.listdir(".") if f.endswith(".geojson")]
     
     if geojson_files:
-        selected_layer = st.selectbox("Select Zone Layer to Inspect", geojson_files, key="map_zone")
+        st.write("Select one or multiple QGIS vector layers to overlay on the master map:")
+        selected_layers = st.multiselect("Active Zoning Layers", geojson_files, default=geojson_files[:3])
         
-        try:
-            gdf = gpd.read_file(selected_layer)
-            st.success(f"Successfully loaded layer: **{selected_layer}** ({len(gdf)} features found)")
-            
-            st.subheader("Layer Attribute Table")
-            st.dataframe(gdf.drop(columns="geometry", errors="ignore"), use_container_width=True)
-
-            if not gdf.empty:
-                st.subheader("Spatial Map View")
-                render_geojson_map(gdf, height=500)
-
-        except Exception as e:
-            st.error(f"Error processing {selected_layer}: {e}")
+        if selected_layers:
+            render_multi_layer_map(selected_layers, height=550)
+        else:
+            st.info("Please select at least one layer above to render the map.")
     else:
         st.warning("No `.geojson` files found in the repository.")
 
