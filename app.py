@@ -2,6 +2,7 @@ import os
 import json
 import pandas as pd
 import geopandas as gpd
+import pydeck as pdk
 import plotly.express as px
 import streamlit as st
 
@@ -86,10 +87,43 @@ def load_project_data():
 
 df_projects = load_project_data()
 
+# --- HELPER FUNCTION FOR PYDECK MAPS ---
+def render_geojson_map(gdf, height=400):
+    if gdf.crs is not None and gdf.crs != "EPSG:4326":
+        gdf = gdf.to_crs(epsg=4326)
+    
+    centroid = gdf.geometry.unary_union.centroid
+    
+    # Create PyDeck GeoJsonLayer
+    layer = pdk.Layer(
+        "GeoJsonLayer",
+        json.loads(gdf.to_json()),
+        pickable=True,
+        stroked=True,
+        filled=True,
+        get_fill_color=[88, 166, 255, 120],  # Transparent blue matching theme
+        get_line_color=[255, 255, 255, 200],  # White border lines
+        get_line_width=30,
+    )
+    
+    view_state = pdk.ViewState(
+        latitude=centroid.y,
+        longitude=centroid.x,
+        zoom=13,
+        pitch=0,
+    )
+    
+    r = pdk.Deck(
+        layers=[layer],
+        initial_view_state=view_state,
+        map_style="dark",
+        tooltip={"text": "Zone Feature ID: {id}"}
+    )
+    st.pydeck_chart(r, use_container_width=True, height=height)
+
 # --- 1. DASHBOARD HOME VIEW ---
 if nav_selection == "Dashboard Home":
     
-    # KPI METRICS ROW
     st.markdown("### Key Performance Indicators (KPIs) - Overview")
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     with kpi1:
@@ -103,7 +137,6 @@ if nav_selection == "Dashboard Home":
 
     st.markdown("---")
 
-    # CHARTS ROW
     chart_col1, chart_col2 = st.columns(2)
     with chart_col1:
         fig_phase = px.bar(
@@ -133,7 +166,6 @@ if nav_selection == "Dashboard Home":
 
     st.markdown("---")
 
-    # BOTTOM GRID: MAP VIEWER & RISK TABLE
     bot_col1, bot_col2 = st.columns(2)
     with bot_col1:
         st.markdown("### Spatial Development & Land Use Map Viewer")
@@ -143,26 +175,8 @@ if nav_selection == "Dashboard Home":
             try:
                 gdf = gpd.read_file(selected_zone)
                 st.success(f"Loaded layer: {selected_zone} ({len(gdf)} records)")
-                
-                # Render the map directly here as well!
                 if not gdf.empty:
-                    if gdf.crs is not None and gdf.crs != "EPSG:4326":
-                        gdf = gdf.to_crs(epsg=4326)
-                    centroid = gdf.geometry.unary_union.centroid
-                    
-                    fig_home_map = px.choropleth_mapbox(
-                        gdf,
-                        geojson=gdf.geometry,
-                        locations=gdf.index,
-                        center={"lat": centroid.y, "lon": centroid.x},
-                        zoom=13,
-                        opacity=0.6,
-                        mapbox_style="carto-positron",
-                        height=280
-                    )
-                    fig_home_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-                    st.plotly_chart(fig_home_map, use_container_width=True)
-
+                    render_geojson_map(gdf, height=250)
             except Exception as e:
                 st.error(f"Error reading layer: {e}")
         else:
@@ -194,23 +208,7 @@ elif nav_selection == "Spatial Map Viewer":
 
             if not gdf.empty:
                 st.subheader("Spatial Map View")
-                if gdf.crs is not None and gdf.crs != "EPSG:4326":
-                    gdf = gdf.to_crs(epsg=4326)
-                
-                centroid = gdf.geometry.unary_union.centroid
-                
-                fig = px.choropleth_mapbox(
-                    gdf,
-                    geojson=gdf.geometry,
-                    locations=gdf.index,
-                    center={"lat": centroid.y, "lon": centroid.x},
-                    zoom=13,
-                    opacity=0.6,
-                    mapbox_style="carto-positron",
-                    title=f"Boundary Map: {selected_layer.replace('.geojson', '')}"
-                )
-                fig.update_layout(margin={"r":0,"t":40,"l":0,"b":0}, height=500)
-                st.plotly_chart(fig, use_container_width=True)
+                render_geojson_map(gdf, height=500)
 
         except Exception as e:
             st.error(f"Error processing {selected_layer}: {e}")
