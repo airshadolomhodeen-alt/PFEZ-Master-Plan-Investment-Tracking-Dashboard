@@ -174,17 +174,31 @@ elif nav_selection == "Spatial Map Viewer":
             st.subheader("Layer Attribute Table")
             st.dataframe(gdf.drop(columns="geometry", errors="ignore"), use_container_width=True)
 
-            # Render map natively using Streamlit
+            # Render polygon boundaries using Plotly choropleth mapbox
             if not gdf.empty:
                 st.subheader("Spatial Map View")
                 if gdf.crs is not None and gdf.crs != "EPSG:4326":
                     gdf = gdf.to_crs(epsg=4326)
-                st.map(gdf)
+                
+                centroid = gdf.geometry.unary_union.centroid
+                
+                fig = px.choropleth_mapbox(
+                    gdf,
+                    geojson=gdf.geometry,
+                    locations=gdf.index,
+                    center={"lat": centroid.y, "lon": centroid.x},
+                    zoom=13,
+                    opacity=0.6,
+                    mapbox_style="carto-positron",
+                    title=f"Boundary Map: {selected_layer.replace('.geojson', '')}"
+                )
+                fig.update_layout(margin={"r":0,"t":40,"l":0,"b":0}, height=500)
+                st.plotly_chart(fig, use_container_width=True)
 
         except Exception as e:
             st.error(f"Error processing {selected_layer}: {e}")
     else:
-            st.warning("No `.geojson` files found in the repository.")
+        st.warning("No `.geojson` files found in the repository.")
 
 # --- 4. M&E & RISK MATRIX VIEW ---
 elif nav_selection == "M&E & Risk Matrix":
