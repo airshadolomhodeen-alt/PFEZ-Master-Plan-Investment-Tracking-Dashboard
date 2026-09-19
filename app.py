@@ -61,6 +61,39 @@ st.sidebar.info(
     "**Project:** PFEZ Master Plan\n**Timeline:** 2026–2040\n**Total Budget:** PhP 5.3B\n**Zoning Layers:** 12 Active Files"
 )
 
+# --- PROJECT AUTHOR & CONTACT INFO ---
+st.sidebar.markdown("---")
+st.sidebar.markdown("### Project Lead")
+
+try:
+    st.sidebar.image("AirSad.png", width=130, caption="ENGR. AIRSAD R. OLOMODIN, MBA, CBE")
+except Exception:
+    st.sidebar.image("https://img.icons8.com/fluency/96/user-male-circle.png", width=80, caption="Project Lead")
+
+st.sidebar.markdown(
+    """
+    <div style='font-size: 11px; color: #C9D1D9; line-height: 1.4;'>
+    <b>ENGR. AIRSAD R. OLOMODIN, MBA, CBE</b><br>
+    📱 0975-256-9055 / 0929-336-7787<br>
+    ✉️ airsadolomodin@gmail.com
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.sidebar.markdown("---")
+
+# --- PROFESSIONAL DISCLAIMER ---
+st.sidebar.markdown(
+    """
+    <div style='font-size: 10px; color: #8B949E; line-height: 1.3;'>
+    <b>Professional Disclaimer:</b><br>
+    This dashboard is an interactive prototype developed for strategic evaluation and planning purposes. It utilizes Phase 3 SDPIP data and spatial layers from the Bangsamoro Economic Zone Authority (BEZA). All rights reserved.
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 # --- REAL PROJECT & PHASING DATA (Phase 3 SDPIP / BEZA) ---
 @st.cache_data
 def load_project_data():
@@ -116,7 +149,6 @@ def render_multi_layer_map(selected_files, height=400):
                     gdf = gdf.to_crs(epsg=4326)
                 all_gdfs.append(gdf)
                 
-                # If it's the master PFEZ boundary, make it a crisp outer outline only
                 if "PFEZ Boundaries" in file_name or "boundary" in file_name.lower():
                     layer = pdk.Layer(
                         "GeoJsonLayer",
@@ -124,12 +156,11 @@ def render_multi_layer_map(selected_files, height=400):
                         pickable=True,
                         stroked=True,
                         filled=False,
-                        get_line_color=[255, 255, 255, 255], # Bright white outer boundary
+                        get_line_color=[255, 255, 255, 255],
                         get_line_width=45,
                         line_width_min_pixels=3,
                     )
                 else:
-                    # All other sub-zones render as filled polygons
                     color = color_palette[idx % len(color_palette)]
                     layer = pdk.Layer(
                         "GeoJsonLayer",
