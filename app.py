@@ -37,7 +37,7 @@ st.markdown(
     """
     <div style="background-color: #161B22; padding: 15px; border-radius: 8px; border: 1px solid #30363D; text-align: center; margin-bottom: 20px;">
         <h2 style="color: #58A6FF; margin: 0; font-size: 22px;">POLLOC FREEDOM AND ECONOMIC ZONE (PFEZ): MASTER PLAN & INVESTMENT TRACKING DASHBOARD</h2>
-        <p style="color: #8B949E; margin: 5px 0 0 0; font-size: 13px;">Data Source: Phase 3 SDPIP Report / Bangsamoro Economic Zone Authority (BEZA)[cite: 1]</p>
+        <p style="color: #8B949E; margin: 5px 0 0 0; font-size: 13px;">Data Source: Phase 3 SDPIP Report / Bangsamoro Economic Zone Authority (BEZA)</p>
     </div>
 """,
     unsafe_allow_html=True,
@@ -58,30 +58,37 @@ nav_selection = st.sidebar.radio(
 
 st.sidebar.markdown("---")
 st.sidebar.info(
-    "**Project:** PFEZ Master Plan\n**Timeline:** 2026–2040[cite: 1]\n**Total Budget:** PhP 5.3B[cite: 1]\n**Zoning Layers:** 12 Active Files[cite: 4]"
+    "**Project:** PFEZ Master Plan\n**Timeline:** 2026–2040\n**Total Budget:** PhP 5.3B\n**Zoning Layers:** 12 Active Files"
 )
 
-# --- MOCK PROJECT DATA ---
+# --- REAL PROJECT & PHASING DATA (Phase 3 SDPIP / BEZA) ---
 @st.cache_data
 def load_project_data():
     data = {
         "Project Name": [
-            "New Container Terminal Construction",
-            "Access Road & Bridge Upgrading",
-            "Halal Processing Hub Facility",
-            "Mangrove Ecopark Development",
-            "Power Substation & Utilities",
+            "Institutional Setup & BOSS Establishment",
+            "Baseline Studies & Master Plan Updating",
+            "Port Operations Zone Expansion & Container Yard",
+            "Halal Processing & Certification Hub",
+            "Power Substation & Water Distribution System",
+            "Wharf Extension & Seawall Construction",
+            "Land Reclamation for Port Logistics",
+            "IT Park & Ecotourism Development"
         ],
         "Phase": [
             "Phase 1 (2026-2030)",
             "Phase 1 (2026-2030)",
             "Phase 2 (2029-2035)",
             "Phase 2 (2029-2035)",
+            "Phase 2 (2029-2035)",
             "Phase 3 (2032-2038)",
+            "Phase 3 (2032-2038)",
+            "Phase 4 (2035-2040)"
         ],
-        "Cost_PhP_M": [1800, 650, 900, 250, 750],
-        "Status": ["In Progress", "Completed", "Planning", "Not Started", "Planning"],
-        "Risk_Level": ["Low", "Low", "Medium", "Low", "High"],
+        "Cost_PhP_M": [114.4, 150.0, 1200.0, 550.0, 250.0, 1800.0, 1200.0, 167.6],
+        "Status": ["In Progress", "In Progress", "Planning", "Planning", "Not Started", "Not Started", "Not Started", "Not Started"],
+        "Risk_Level": ["Low", "Low", "Medium", "Low", "Medium", "High", "High", "Low"],
+        "PAPs_Count": [20, 19, 18, 10, 4, 10, 6, 8]
     }
     return pd.DataFrame(data)
 
@@ -110,7 +117,7 @@ def render_multi_layer_map(selected_files, height=400):
                 all_gdfs.append(gdf)
                 
                 # If it's the master PFEZ boundary, make it a crisp outer outline only
-                if "PFEZ Boundaries" in file_name:
+                if "PFEZ Boundaries" in file_name or "boundary" in file_name.lower():
                     layer = pdk.Layer(
                         "GeoJsonLayer",
                         json.loads(gdf.to_json()),
@@ -153,7 +160,7 @@ def render_multi_layer_map(selected_files, height=400):
             layers=layers,
             initial_view_state=view_state,
             map_style="dark",
-            tooltip={"text": "Zoning Layer Feature"}
+            tooltip={"text": "Zoning Layer Feature: {name}" if "name" in combined_gdf.columns else "Zoning Layer Feature"}
         )
         st.pydeck_chart(r, use_container_width=True, height=height)
     else:
@@ -165,13 +172,13 @@ if nav_selection == "Dashboard Home":
     st.markdown("### Key Performance Indicators (KPIs) - Overview")
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     with kpi1:
-        st.metric(label="Total Estimated Cost", value="PhP 5.3 Billion", delta="95 PAPs")
+        st.metric(label="Total Estimated Cost", value="PhP 5.3 Billion", delta="95 PAPs Total")
     with kpi2:
-        st.metric(label="Total Programs & Projects", value="95 PAPs", delta="Across 4 Phases")
+        st.metric(label="Total Programs & Projects", value="95 PAPs", delta="4 Implementation Phases")
     with kpi3:
-        st.metric(label="Implementation Period", value="2026 - 2040", delta="Long-term")
+        st.metric(label="Planning Horizon", value="2026 - 2040", delta="Long-term Master Plan")
     with kpi4:
-        st.metric(label="Overall Completion Status", value="15%", delta="On Track 🟢")
+        st.metric(label="Phase 1 Budget", value="PhP 264.4 M", delta="39 Initial PAPs")
 
     st.markdown("---")
 
@@ -182,7 +189,7 @@ if nav_selection == "Dashboard Home":
             x="Phase",
             y="Cost_PhP_M",
             color="Status",
-            title="Investment by Phase & Status (PhP Millions)",
+            title="Investment Capital by Phase & Status (PhP Millions)",
             template="plotly_dark",
             height=320,
         )
@@ -194,7 +201,7 @@ if nav_selection == "Dashboard Home":
             df_projects,
             names="Project Name",
             values="Cost_PhP_M",
-            title="Top Project Cost Distribution Share",
+            title="Major Project Cost Distribution Share",
             hole=0.4,
             template="plotly_dark",
             height=320,
@@ -212,29 +219,42 @@ if nav_selection == "Dashboard Home":
             selected_home_zone = st.selectbox(
                 "Select Zone Layer", 
                 geojson_files, 
-                format_func=lambda x: x.replace(".geojson", ""),
+                format_func=lambda x: x.replace(".geojson", "").replace("_", " ").title(),
                 key="home_zone"
             )
             try:
-                gdf = gpd.read_file(selected_home_zone)
                 render_multi_layer_map([selected_home_zone], height=260)
             except Exception as e:
                 st.error(f"Error reading layer: {e}")
         else:
-            st.warning("No geojson files found.")
+            st.warning("No geojson files found in directory.")
 
     with bot_col2:
-        st.markdown("### Monitoring & Evaluation (M&E) / Risk Matrix")
-        st.dataframe(df_projects, height=330, use_container_width=True)
+        st.markdown("### Summary Investment Program Table")
+        st.dataframe(df_projects[["Project Name", "Phase", "Cost_PhP_M", "Status"]], height=260, use_container_width=True)
 
 # --- 2. INVESTMENT PHASING VIEW ---
 elif nav_selection == "Investment Phasing":
-    st.title("💰 Investment & Phasing Program")
+    st.title("💰 Investment & Phasing Program (2026–2040)")
+    st.markdown("Detailed breakdown of the **95 Programs and Projects (PAPs)** amounting to **PhP 5.3 Billion** across 4 distinct phases as outlined in the Phase 3 SDPIP Report.")
+    
+    col_p1, col_p2, col_p3, col_p4 = st.columns(4)
+    with col_p1:
+        st.metric("Phase 1 (2026-2030)", "PhP 264.4 M", "39 PAPs")
+    with col_p2:
+        st.metric("Phase 2 (2029-2035)", "PhP 2.0 B", "32 PAPs")
+    with col_p3:
+        st.metric("Phase 3 (2032-2038)", "PhP 3.0 B", "16 PAPs")
+    with col_p4:
+        st.metric("Phase 4 (2035-2040)", "PhP 167.6 M", "8 PAPs")
+        
+    st.markdown("---")
     st.dataframe(df_projects, use_container_width=True)
 
 # --- 3. SPATIAL MAP VIEWER ---
 elif nav_selection == "Spatial Map Viewer":
     st.title("🗺️ Spatial Development & Land Use Map Viewer")
+    st.markdown("Interactive multi-layer GIS viewer integrating QGIS vector layers for the Polloc Freeport and Economic Zone.")
     geojson_files = sorted([f for f in os.listdir(".") if f.endswith(".geojson")])
     
     if geojson_files:
@@ -242,8 +262,8 @@ elif nav_selection == "Spatial Map Viewer":
         selected_layers = st.multiselect(
             "Active Zoning Layers", 
             geojson_files, 
-            default=geojson_files[:3],
-            format_func=lambda x: x.replace(".geojson", "")
+            default=geojson_files[:min(3, len(geojson_files))],
+            format_func=lambda x: x.replace(".geojson", "").replace("_", " ").title()
         )
         
         if selected_layers:
@@ -251,9 +271,22 @@ elif nav_selection == "Spatial Map Viewer":
         else:
             st.info("Please select at least one layer above to render the map.")
     else:
-        st.warning("No `.geojson` files found in the repository.")
+        st.warning("No `.geojson` files found in the repository. Please ensure QGIS vector exports are placed in the app directory.")
 
 # --- 4. M&E & RISK MATRIX VIEW ---
 elif nav_selection == "M&E & Risk Matrix":
     st.title("📊 Monitoring & Evaluation (M&E) & Risk Matrix")
-    st.dataframe(df_projects, use_container_width=True)
+    st.markdown("Tracking project risks, mitigation measures, and performance indicators across the PFEZ master development lifecycle.")
+    
+    risk_df = df_projects[["Project Name", "Phase", "Risk_Level", "Status"]].copy()
+    risk_df["Mitigation Strategy"] = [
+        "Early institutional alignment with BEZA and BARMM ministries",
+        "Engage technical consultants for comprehensive baseline data",
+        "Establish PPP frameworks and secure ODA co-financing",
+        "Strict adherence to Halal accreditation standards and stakeholder engagement",
+        "Coordinate with local power cooperatives and DPWH",
+        "Phased marine engineering studies and environmental safeguards",
+        "Rigorous geotechnical and hydrodynamic modeling for reclamation",
+        "Incorporate green building standards and renewable energy components"
+    ]
+    st.dataframe(risk_df, use_container_width=True)
