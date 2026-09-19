@@ -89,7 +89,7 @@ df_projects = load_project_data()
 # --- 1. DASHBOARD HOME VIEW ---
 if nav_selection == "Dashboard Home":
     
-    # KPI METRICS ROW (Matches top cards in mockup)
+    # KPI METRICS ROW
     st.markdown("### Key Performance Indicators (KPIs) - Overview")
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     with kpi1:
@@ -103,7 +103,7 @@ if nav_selection == "Dashboard Home":
 
     st.markdown("---")
 
-    # CHARTS ROW (Matches side-by-side charts in mockup)
+    # CHARTS ROW
     chart_col1, chart_col2 = st.columns(2)
     with chart_col1:
         fig_phase = px.bar(
@@ -139,7 +139,7 @@ if nav_selection == "Dashboard Home":
         st.markdown("### Spatial Development & Land Use Map Viewer")
         geojson_files = [f for f in os.listdir(".") if f.endswith(".geojson")]
         if geojson_files:
-            selected_zone = st.selectbox("Filter by Zone Layer", geojson_files)
+            selected_zone = st.selectbox("Filter by Zone Layer", geojson_files, key="home_zone")
             try:
                 gdf = gpd.read_file(selected_zone)
                 st.success(f"Loaded layer: {selected_zone} ({len(gdf)} records)")
@@ -162,16 +162,29 @@ elif nav_selection == "Investment Phasing":
 elif nav_selection == "Spatial Map Viewer":
     st.title("🗺️ Spatial Development & Land Use Map Viewer")
     geojson_files = [f for f in os.listdir(".") if f.endswith(".geojson")]
+    
     if geojson_files:
-        selected_layer = st.selectbox("Select Zone Layer", geojson_files)
-        gdf = gpd.read_file(selected_layer)
-        st.dataframe(gdf.drop(columns="geometry", errors="ignore"), use_container_width=True)
+        selected_layer = st.selectbox("Select Zone Layer to Inspect", geojson_files, key="map_zone")
         
-        centroid = gdf.to_crs(epsg=4326).geometry.centroid.iloc[0]
-        fig_map = px.scatter_mapbox(
-            lat=[centroid.y], lon=[centroid.x], zoom=14, mapbox_style="carto-positron"
-        )
-        st.plotly_chart(fig_map, use_container_width=True)
+        try:
+            gdf = gpd.read_file(selected_layer)
+            st.success(f"Successfully loaded layer: **{selected_layer}** ({len(gdf)} features found)")
+            
+            # Display attribute table
+            st.subheader("Layer Attribute Table")
+            st.dataframe(gdf.drop(columns="geometry", errors="ignore"), use_container_width=True)
+
+            # Render map natively using Streamlit
+            if not gdf.empty:
+                st.subheader("Spatial Map View")
+                if gdf.crs is not None and gdf.crs != "EPSG:4326":
+                    gdf = gdf.to_crs(epsg=4326)
+                st.map(gdf)
+
+        except Exception as e:
+            st.error(f"Error processing {selected_layer}: {e}")
+    else:
+            st.warning("No `.geojson` files found in the repository.")
 
 # --- 4. M&E & RISK MATRIX VIEW ---
 elif nav_selection == "M&E & Risk Matrix":
