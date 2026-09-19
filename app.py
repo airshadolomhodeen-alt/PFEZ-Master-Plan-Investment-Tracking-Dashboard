@@ -92,7 +92,6 @@ def render_multi_layer_map(selected_files, height=400):
     layers = []
     all_gdfs = []
     
-    # Distinct color palette mapping for different zones
     color_palette = [
         [88, 166, 255, 140],   # Blue
         [46, 160, 67, 140],    # Green
@@ -141,11 +140,11 @@ def render_multi_layer_map(selected_files, height=400):
             layers=layers,
             initial_view_state=view_state,
             map_style="dark",
-            tooltip={"text": "Layer Feature loaded successfully"}
+            tooltip={"text": "Zone Layer Feature"}
         )
         st.pydeck_chart(r, use_container_width=True, height=height)
     else:
-        st.warning("Select at least one valid geojson layer to display on the map.")
+        st.warning("Select at least one valid layer to display on the map.")
 
 # --- 1. DASHBOARD HOME VIEW ---
 if nav_selection == "Dashboard Home":
@@ -195,12 +194,17 @@ if nav_selection == "Dashboard Home":
     bot_col1, bot_col2 = st.columns(2)
     with bot_col1:
         st.markdown("### Spatial Zoning Quick Viewer")
-        geojson_files = [f for f in os.listdir(".") if f.endswith(".geojson")]
+        geojson_files = sorted([f for f in os.listdir(".") if f.endswith(".geojson")])
         if geojson_files:
-            selected_home_zone = st.selectbox("Select Zone Layer", geojson_files, key="home_zone")
+            selected_home_zone = st.selectbox(
+                "Select Zone Layer", 
+                geojson_files, 
+                format_func=lambda x: x.replace(".geojson", ""),
+                key="home_zone"
+            )
             try:
                 gdf = gpd.read_file(selected_home_zone)
-                st.success(f"Loaded: {selected_home_zone} ({len(gdf)} features)")
+                st.success(f"Loaded: {selected_home_zone.replace('.geojson', '')} ({len(gdf)} features)")
                 render_multi_layer_map([selected_home_zone], height=240)
             except Exception as e:
                 st.error(f"Error reading layer: {e}")
@@ -219,11 +223,16 @@ elif nav_selection == "Investment Phasing":
 # --- 3. SPATIAL MAP VIEWER ---
 elif nav_selection == "Spatial Map Viewer":
     st.title("🗺️ Spatial Development & Land Use Map Viewer")
-    geojson_files = [f for f in os.listdir(".") if f.endswith(".geojson")]
+    geojson_files = sorted([f for f in os.listdir(".") if f.endswith(".geojson")])
     
     if geojson_files:
         st.write("Select one or multiple QGIS vector layers to overlay on the master map:")
-        selected_layers = st.multiselect("Active Zoning Layers", geojson_files, default=geojson_files[:3])
+        selected_layers = st.multiselect(
+            "Active Zoning Layers", 
+            geojson_files, 
+            default=geojson_files[:3],
+            format_func=lambda x: x.replace(".geojson", "")
+        )
         
         if selected_layers:
             render_multi_layer_map(selected_layers, height=550)
