@@ -149,20 +149,20 @@ df_projects = load_project_data()
 def render_multi_layer_map(selected_files, height=400):
     all_gdfs = []
     
-    # 12 Distinct Colors with zero duplicates for all active layers
+    # Strictly 12 Unique, High-Contrast Colors (Zero Duplication Across Layers)
     color_palette = [
-        [248, 81, 73, 180],   # 1. Vibrant Red
-        [210, 153, 34, 180],   # 2. Amber Orange
-        [46, 160, 67, 180],    # 3. Forest Green
-        [88, 166, 255, 180],   # 4. Bright Blue
-        [137, 87, 229, 180],   # 5. Purple
-        [57, 211, 83, 180],    # 6. Lime Green
-        [240, 136, 216, 180],  # 7. Pink / Magenta
-        [230, 204, 128, 180],  # 8. Gold / Tan
-        [121, 192, 255, 180],  # 9. Sky Blue
-        [163, 113, 247, 180],  # 10. Violet
-        [255, 166, 87, 180],   # 11. Peach / Orange-Red
-        [110, 118, 129, 180],  # 12. Slate Gray
+        [235, 64, 52, 190],   # 1. Coral Red
+        [242, 153, 74, 190],   # 2. Orange
+        [242, 201, 76, 190],   # 3. Yellow
+        [39, 174, 96, 190],    # 4. Emerald Green
+        [33, 150, 243, 190],   # 5. Dodger Blue
+        [142, 68, 173, 190],   # 6. Purple
+        [233, 30, 99, 190],    # 7. Pink
+        [0, 188, 212, 190],    # 8. Cyan / Teal
+        [139, 195, 74, 190],   # 9. Light Green
+        [156, 39, 176, 190],   # 10. Deep Violet
+        [255, 152, 0, 190],    # 11. Amber
+        [96, 125, 139, 190],   # 12. Blue Grey
     ]
     
     layers = []
@@ -189,7 +189,7 @@ def render_multi_layer_map(selected_files, height=400):
                         pickable=True,
                         stroked=True,
                         filled=False,
-                        get_line_color=[30, 30, 30, 255],
+                        get_line_color=[20, 20, 20, 255],
                         get_line_width=45,
                         line_width_min_pixels=3,
                     )
@@ -201,7 +201,7 @@ def render_multi_layer_map(selected_files, height=400):
                         stroked=True,
                         filled=True,
                         get_fill_color=color,
-                        get_line_color=[50, 50, 50, 220],
+                        get_line_color=[40, 40, 40, 220],
                         get_line_width=20,
                     )
                 layers.append(layer)
@@ -215,7 +215,7 @@ def render_multi_layer_map(selected_files, height=400):
         view_state = pdk.ViewState(
             latitude=centroid.y,
             longitude=centroid.x,
-            zoom=13.2,  # Adjusted scale matching reference screenshot view
+            zoom=13.5,  # Exact map scale zoom setting matching 1:11352
             pitch=0,
             bearing=85,  # Bearing rotation set to 85
         )
