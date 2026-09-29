@@ -210,37 +210,21 @@ def render_multi_layer_map(selected_files, height=400):
             longitude=centroid.x,
             zoom=13,
             pitch=0,
-            bearing=85,  # Exact 85 rotation matching QGIS
+            bearing=85,  # Bearing rotation set to 85 as requested
         )
         
-        # Using standard Carto Positron (light eye-friendly base map) with Esri World Street Map style URL via map_style
         r = pdk.Deck(
             layers=layers,
             initial_view_state=view_state,
-            map_style="light",  # Ensures bright, eye-friendly canvas background
+            map_style="light",
             map_provider="carto",
             tooltip={"text": "Zoning Layer Feature: {name}" if "name" in combined_gdf.columns else "Zoning Layer Feature"}
         )
         st.pydeck_chart(r, use_container_width=True, height=height)
-        
-        # Render dynamic legend showing all selected zones
-        if legend_items:
-            legend_html = """
-            <div style="background-color: #161B22; padding: 12px; border-radius: 6px; border: 1px solid #30363D; margin-top: 10px;">
-                <div style="font-size: 13px; font-weight: bold; color: #FAFAFA; margin-bottom: 8px;">Active Zone Legend</div>
-                <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-            """
-            for name, col in legend_items:
-                legend_html += f"""
-                    <div style="display: flex; align-items: center; font-size: 11px; color: #C9D1D9;">
-                        <span style="width: 14px; height: 14px; background-color: {col}; border: 1px solid #ffffff; display: inline-block; margin-right: 6px; border-radius: 3px;"></span>
-                        {name}
-                    </div>
-                """
-            legend_html += "</div></div>"
-            st.markdown(legend_html, unsafe_allow_html=True)
     else:
         st.warning("Select at least one valid layer to display on the map.")
+        
+    return legend_items
 
 # --- 1. DASHBOARD HOME VIEW ---
 if nav_selection == "Dashboard Home":
@@ -343,7 +327,29 @@ elif nav_selection == "Spatial Map Viewer":
         )
         
         if selected_layers:
-            render_multi_layer_map(selected_layers, height=550)
+            # Side-by-side layout: Map on the left (wider), Legend / Zoning Layers on the right
+            map_col, legend_col = st.columns([3, 1])
+            
+            with map_col:
+                legend_items = render_multi_layer_map(selected_layers, height=560)
+                
+            with legend_col:
+                st.markdown("### 🗂️ Zoning Layers Legend")
+                st.markdown("<p style='font-size: 12px; color: #8B949E;'>Active zones currently rendered:</p>", unsafe_allow_html=True)
+                
+                if legend_items:
+                    for name, col in legend_items:
+                        st.markdown(
+                            f"""
+                            <div style="display: flex; align-items: center; background-color: #161B22; border: 1px solid #30363D; padding: 8px 10px; border-radius: 6px; margin-bottom: 8px;">
+                                <span style="width: 14px; height: 14px; background-color: {col}; border: 1px solid #ffffff; display: inline-block; margin-right: 10px; border-radius: 3px; flex-shrink: 0;"></span>
+                                <span style="font-size: 12px; color: #FAFAFA; font-weight: 500; word-break: break-word;">{name}</span>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                else:
+                    st.info("No active layers selected.")
         else:
             st.info("Select at least one layer above to render the map.")
     else:
