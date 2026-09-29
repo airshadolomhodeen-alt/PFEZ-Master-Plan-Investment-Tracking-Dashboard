@@ -147,21 +147,37 @@ df_projects = load_project_data()
 
 # --- HELPER FUNCTION FOR SMART MAP RENDERING ---
 def render_multi_layer_map(selected_files, height=400):
-    layers = []
+    # Base map: Esri World Street Map TileLayer
+    basemap_layer = pdk.Layer(
+        "TileLayer",
+        data="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+        min_zoom=0,
+        max_zoom=19,
+        tileSize=256,
+    )
+    layers = [basemap_layer]
     all_gdfs = []
     
     color_palette = [
-        [88, 166, 255, 120],   # Transparent Blue fill
-        [46, 160, 67, 120],    # Transparent Green fill
-        [210, 153, 34, 120],   # Transparent Yellow fill
-        [248, 81, 73, 120],    # Transparent Red fill
-        [137, 87, 229, 120],   # Transparent Purple fill
-        [57, 211, 83, 120],    # Transparent Neon Green fill
+        [88, 166, 255, 160],   # Transparent Blue fill
+        [46, 160, 67, 160],    # Transparent Green fill
+        [210, 153, 34, 160],   # Transparent Yellow fill
+        [248, 81, 73, 160],    # Transparent Red fill
+        [137, 87, 229, 160],   # Transparent Purple fill
+        [57, 211, 83, 160],    # Transparent Neon Green fill
     ]
+    
+    legend_items = []
     
     for idx, file_name in enumerate(selected_files):
         try:
             gdf = gpd.read_file(file_name)
+            display_name = file_name.replace(".geojson", "").replace("_", " ").title()
+            color = color_palette[idx % len(color_palette)]
+            
+            rgb_css = f"rgba({color[0]}, {color[1]}, {color[2]}, 0.8)"
+            legend_items.append((display_name, rgb_css))
+            
             if not gdf.empty:
                 if gdf.crs is not None and gdf.crs != "EPSG:4326":
                     gdf = gdf.to_crs(epsg=4326)
@@ -179,7 +195,6 @@ def render_multi_layer_map(selected_files, height=400):
                         line_width_min_pixels=3,
                     )
                 else:
-                    color = color_palette[idx % len(color_palette)]
                     layer = pdk.Layer(
                         "GeoJsonLayer",
                         json.loads(gdf.to_json()),
@@ -203,15 +218,33 @@ def render_multi_layer_map(selected_files, height=400):
             longitude=centroid.x,
             zoom=13,
             pitch=0,
+            bearing=-85,
         )
         
         r = pdk.Deck(
             layers=layers,
             initial_view_state=view_state,
-            map_style="dark",
+            map_style=None,
             tooltip={"text": "Zoning Layer Feature: {name}" if "name" in combined_gdf.columns else "Zoning Layer Feature"}
         )
         st.pydeck_chart(r, use_container_width=True, height=height)
+        
+        # Render dynamic legend for selected zones
+        if legend_items:
+            legend_html = """
+            <div style="background-color: #161B22; padding: 10px; border-radius: 6px; border: 1px solid #30363D; margin-top: 10px;">
+                <div style="font-size: 12px; font-weight: bold; color: #FAFAFA; margin-bottom: 6px;">Active Zone Legend</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 14px;">
+            """
+            for name, col in legend_items:
+                legend_html += f"""
+                    <div style="display: flex; align-items: center; font-size: 11px; color: #C9D1D9;">
+                        <span style="width: 14px; height: 14px; background-color: {col}; border: 1px solid #ffffff; display: inline-block; margin-right: 6px; border-radius: 3px;"></span>
+                        {name}
+                    </div>
+                """
+            legend_html += "</div></div>"
+            st.markdown(legend_html, unsafe_allow_html=True)
     else:
         st.warning("Select at least one valid layer to display on the map.")
 
