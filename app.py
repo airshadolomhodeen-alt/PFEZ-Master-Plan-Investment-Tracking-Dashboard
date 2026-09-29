@@ -205,7 +205,7 @@ def render_multi_layer_map(selected_files, height=400):
         view_state = pdk.ViewState(
             latitude=centroid.y,
             longitude=centroid.x,
-            zoom=15.0,  # Increased zoom level for closer framing
+            zoom=14.5,  # Increased zoom level for closer framing
             pitch=0,
             bearing=85,  # Rotation set to 85
         )
