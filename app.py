@@ -1,5 +1,6 @@
 import os
 import json
+import colorsys
 import pandas as pd
 import geopandas as gpd
 import pydeck as pdk
@@ -148,31 +149,20 @@ df_projects = load_project_data()
 # --- HELPER FUNCTION FOR SMART MAP RENDERING ---
 def render_multi_layer_map(selected_files, height=400):
     all_gdfs = []
-    
-    # Strictly 12 Unique, High-Contrast Colors (Zero Duplication Across Layers)
-    color_palette = [
-        [235, 64, 52, 190],   # 1. Coral Red
-        [242, 153, 74, 190],   # 2. Orange
-        [242, 201, 76, 190],   # 3. Yellow
-        [39, 174, 96, 190],    # 4. Emerald Green
-        [33, 150, 243, 190],   # 5. Dodger Blue
-        [142, 68, 173, 190],   # 6. Purple
-        [233, 30, 99, 190],    # 7. Pink
-        [0, 188, 212, 190],    # 8. Cyan / Teal
-        [139, 195, 74, 190],   # 9. Light Green
-        [156, 39, 176, 190],   # 10. Deep Violet
-        [255, 152, 0, 190],    # 11. Amber
-        [96, 125, 139, 190],   # 12. Blue Grey
-    ]
-    
     layers = []
     legend_items = []
+    
+    total_files = max(len(selected_files), 1)
     
     for idx, file_name in enumerate(selected_files):
         try:
             gdf = gpd.read_file(file_name)
             display_name = file_name.replace(".geojson", "").replace("_", " ").title()
-            color = color_palette[idx % len(color_palette)]
+            
+            # Dynamically generate 100% unique hues distributed evenly across the color spectrum
+            hue = idx / total_files
+            rgb_float = colorsys.hls_to_rgb(hue, 0.60, 0.85)  # balanced lightness & high saturation
+            color = [int(rgb_float[0] * 255), int(rgb_float[1] * 255), int(rgb_float[2] * 255), 185]
             
             rgb_css = f"rgba({color[0]}, {color[1]}, {color[2]}, 0.85)"
             legend_items.append((display_name, rgb_css))
@@ -215,9 +205,9 @@ def render_multi_layer_map(selected_files, height=400):
         view_state = pdk.ViewState(
             latitude=centroid.y,
             longitude=centroid.x,
-            zoom=13.5,  # Exact map scale zoom setting matching 1:11352
+            zoom=13.5,  # Scale 1:11352 view setting
             pitch=0,
-            bearing=85,  # Bearing rotation set to 85
+            bearing=85,  # Rotation set to 85
         )
         
         r = pdk.Deck(
@@ -326,10 +316,11 @@ elif nav_selection == "Spatial Map Viewer":
     
     if geojson_files:
         st.write("Select one or multiple QGIS vector layers to display on the master map:")
+        # ALL layers selected by default automatically
         selected_layers = st.multiselect(
             "Active Zoning Layers", 
             geojson_files, 
-            default=geojson_files[:min(3, len(geojson_files))],
+            default=geojson_files,
             format_func=lambda x: x.replace(".geojson", "").replace("_", " ").title()
         )
         
