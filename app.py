@@ -4,7 +4,8 @@ import colorsys
 import pandas as pd
 import geopandas as gpd
 import streamlit as st
-import pydeck as pdk
+import folium
+from streamlit_folium import st_folium
 import plotly.express as px
 
 # --- PAGE CONFIGURATION ---
@@ -146,14 +147,14 @@ def load_project_data():
 
 df_projects = load_project_data()
 
-# --- HELPER FUNCTION FOR EXACT FOLIUM MAP (ZOOM 14.5, ESRI TILES) ---
+# --- HELPER FUNCTION FOR FOLIUM MAP (ZOOM 14.5, BEARING 85, ESRI TILES) ---
 def render_multi_layer_map(selected_files, height=450):
     all_gdfs = []
     legend_items = []
     total_files = max(len(selected_files), 1)
     
-    # Initialize Folium Map centered with zoom 14.5
-    m = folium.Map(location=[7.34, 124.28], zoom_start=14.5, tiles=None)
+    # Initialize Folium Map with zoom 14.5 and bearing/rotation set to 85
+    m = folium.Map(location=[7.34, 124.28], zoom_start=14.5, bearing=85, tiles=None)
     
     # Esri World Street Map Tile Layer
     esri_tile_url = "https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
@@ -200,6 +201,7 @@ def render_multi_layer_map(selected_files, height=450):
         centroid = combined_gdf.geometry.unary_union.centroid
         m.location = [centroid.y, centroid.x]
         m.options['zoom'] = 14.5
+        m.options['bearing'] = 85
         
     st_folium(m, width="100%", height=height)
     return legend_items
