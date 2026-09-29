@@ -161,7 +161,7 @@ def render_multi_layer_map(selected_files, height=400):
             
             # Dynamically generate 100% unique hues distributed evenly across the color spectrum
             hue = idx / total_files
-            rgb_float = colorsys.hls_to_rgb(hue, 0.60, 0.85)  # balanced lightness & high saturation
+            rgb_float = colorsys.hls_to_rgb(hue, 0.60, 0.85)
             color = [int(rgb_float[0] * 255), int(rgb_float[1] * 255), int(rgb_float[2] * 255), 185]
             
             rgb_css = f"rgba({color[0]}, {color[1]}, {color[2]}, 0.85)"
@@ -205,16 +205,27 @@ def render_multi_layer_map(selected_files, height=400):
         view_state = pdk.ViewState(
             latitude=centroid.y,
             longitude=centroid.x,
-            zoom=14.5,  # Increased zoom level for closer framing
+            zoom=14.2,
             pitch=0,
-            bearing=85,  # Rotation set to 85
+            bearing=85,
         )
         
+        # Esri World Street Map TileLayer configuration
+        esri_tile_layer = pdk.Layer(
+            "TileLayer",
+            data="https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+            min_zoom=0,
+            max_zoom=19,
+            tileSize=256,
+        )
+        
+        # Combine Esri tile layer at the bottom with vector zoning layers on top
+        deck_layers = [esri_tile_layer] + layers
+        
         r = pdk.Deck(
-            layers=layers,
+            layers=deck_layers,
             initial_view_state=view_state,
-            map_style="light",
-            map_provider="carto",
+            map_style=None,  # Custom tile layer used instead of default basemap
             tooltip={"text": "Zoning Layer Feature: {name}" if "name" in combined_gdf.columns else "Zoning Layer Feature"}
         )
         st.pydeck_chart(r, use_container_width=True, height=height)
@@ -316,7 +327,6 @@ elif nav_selection == "Spatial Map Viewer":
     
     if geojson_files:
         st.write("Select one or multiple QGIS vector layers to display on the master map:")
-        # ALL layers selected by default automatically
         selected_layers = st.multiselect(
             "Active Zoning Layers", 
             geojson_files, 
@@ -325,11 +335,12 @@ elif nav_selection == "Spatial Map Viewer":
         )
         
         if selected_layers:
-            # Side-by-side layout: Map on the left (wider), Legend / Zoning Layers on the right
             map_col, legend_col = st.columns([3, 1])
             
             with map_col:
                 legend_items = render_multi_layer_map(selected_layers, height=560)
+                # Attribution note below map matching user request
+                st.markdown("<p style='font-size: 10px; color: #8B949E; text-align: right; margin-top: 4px;'>Tiles © Esri — Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012</p>", unsafe_allow_html=True)
                 
             with legend_col:
                 st.markdown("### 🗂️ Zoning Layers Legend")
