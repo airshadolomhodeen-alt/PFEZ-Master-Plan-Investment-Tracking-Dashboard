@@ -1,10 +1,10 @@
 import os
+import json
 import colorsys
 import pandas as pd
 import geopandas as gpd
 import streamlit as st
-import folium
-from streamlit_folium import st_folium
+import pydeck as pdk
 import plotly.express as px
 
 # --- PAGE CONFIGURATION ---
@@ -41,11 +41,6 @@ st.markdown(
                 min-width: 100% !important;
                 margin-bottom: 10px;
             }
-        }
-        
-        /* HIDE LEAFLET MAP ATTRIBUTION TEXT */
-        .leaflet-control-attribution {
-            display: none !important;
         }
     </style>
 """,
@@ -194,7 +189,6 @@ def render_multi_layer_map(selected_files, height=450):
         combined_gdf = pd.concat(all_gdfs, ignore_index=True)
         centroid = combined_gdf.geometry.unary_union.centroid
         
-        # Pydeck fully supports zoom 14.5 and bearing 85 (rotation)
         view_state = pdk.ViewState(
             latitude=centroid.y,
             longitude=centroid.x,
@@ -203,7 +197,6 @@ def render_multi_layer_map(selected_files, height=450):
             bearing=85,
         )
         
-        # Esri World Street Map TileLayer
         esri_tile_layer = pdk.Layer(
             "TileLayer",
             data="https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
@@ -218,7 +211,7 @@ def render_multi_layer_map(selected_files, height=450):
             layers=deck_layers,
             initial_view_state=view_state,
             map_style=None,
-            tooltip={"text": "Zoning Layer Feature: {name}" if "name" in combined_gdf.columns else "Zoning Layer Feature"}
+            tooltip={"text": "Zoning Layer Feature"}
         )
         st.pydeck_chart(r, use_container_width=True, height=height)
     else:
