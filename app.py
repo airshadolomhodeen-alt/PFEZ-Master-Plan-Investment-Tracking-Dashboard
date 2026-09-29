@@ -146,7 +146,7 @@ def load_project_data():
 
 df_projects = load_project_data()
 
-# --- HELPER FUNCTION FOR PYDECK MAP (WITH ZOOM 14.5 & ROTATION 85) ---
+# --- HELPER FUNCTION FOR BRIGHT PYDECK MAP (ZOOM 14.5, BEARING 85, LIGHT THEME) ---
 def render_multi_layer_map(selected_files, height=450):
     all_gdfs = []
     layers = []
@@ -210,7 +210,7 @@ def render_multi_layer_map(selected_files, height=450):
         r = pdk.Deck(
             layers=deck_layers,
             initial_view_state=view_state,
-            map_style=None,
+            map_style=pdk.map_styles.LIGHT,  # Keeps the map bright and clean
             tooltip={"text": "Zoning Layer Feature"}
         )
         st.pydeck_chart(r, use_container_width=True, height=height)
