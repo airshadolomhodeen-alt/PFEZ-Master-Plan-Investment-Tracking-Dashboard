@@ -210,7 +210,7 @@ def render_multi_layer_map(selected_files, height=400):
             longitude=centroid.x,
             zoom=13,
             pitch=0,
-            bearing=-85,  # Exact -85 rotation matching QGIS
+            bearing=-185,  # Exact -185 rotation matching QGIS
         )
         
         # Using standard Carto Positron (light eye-friendly base map) with Esri World Street Map style URL via map_style
