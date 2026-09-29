@@ -149,13 +149,20 @@ df_projects = load_project_data()
 def render_multi_layer_map(selected_files, height=400):
     all_gdfs = []
     
+    # 12 Distinct Colors with zero duplicates for all active layers
     color_palette = [
-        [248, 81, 73, 180],   # Red / Pink
-        [210, 153, 34, 180],   # Yellow / Orange
-        [46, 160, 67, 180],    # Green
-        [88, 166, 255, 180],   # Blue
-        [137, 87, 229, 180],   # Purple
-        [57, 211, 83, 180],    # Light Green
+        [248, 81, 73, 180],   # 1. Vibrant Red
+        [210, 153, 34, 180],   # 2. Amber Orange
+        [46, 160, 67, 180],    # 3. Forest Green
+        [88, 166, 255, 180],   # 4. Bright Blue
+        [137, 87, 229, 180],   # 5. Purple
+        [57, 211, 83, 180],    # 6. Lime Green
+        [240, 136, 216, 180],  # 7. Pink / Magenta
+        [230, 204, 128, 180],  # 8. Gold / Tan
+        [121, 192, 255, 180],  # 9. Sky Blue
+        [163, 113, 247, 180],  # 10. Violet
+        [255, 166, 87, 180],   # 11. Peach / Orange-Red
+        [110, 118, 129, 180],  # 12. Slate Gray
     ]
     
     layers = []
@@ -208,9 +215,9 @@ def render_multi_layer_map(selected_files, height=400):
         view_state = pdk.ViewState(
             latitude=centroid.y,
             longitude=centroid.x,
-            zoom=13,
+            zoom=13.2,  # Adjusted scale matching reference screenshot view
             pitch=0,
-            bearing=85,  # Bearing rotation set to 85 as requested
+            bearing=85,  # Bearing rotation set to 85
         )
         
         r = pdk.Deck(
