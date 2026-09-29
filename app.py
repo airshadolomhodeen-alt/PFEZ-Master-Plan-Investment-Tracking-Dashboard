@@ -151,14 +151,14 @@ def load_project_data():
 
 df_projects = load_project_data()
 
-# --- HELPER FUNCTION FOR BRIGHT FOLIUM ESRI MAP RENDERING (NO WATERMARKS) ---
+# --- HELPER FUNCTION FOR BRIGHT FOLIUM ESRI MAP RENDERING (ZOOM 14.5, ROTATION 85) ---
 def render_multi_layer_map(selected_files, height=450):
     all_gdfs = []
     legend_items = []
     total_files = max(len(selected_files), 1)
     
-    # Initialize Folium Map
-    m = folium.Map(location=[7.34, 124.28], zoom_start=14, tiles=None)
+    # Initialize Folium Map with zoom 14.5
+    m = folium.Map(location=[7.34, 124.28], zoom_start=14.5, tiles=None)
     
     # Esri World Street Map Tile Layer (Bright & Clean)
     esri_tile_url = "https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
@@ -216,6 +216,7 @@ def render_multi_layer_map(selected_files, height=450):
         combined_gdf = pd.concat(all_gdfs, ignore_index=True)
         centroid = combined_gdf.geometry.unary_union.centroid
         m.location = [centroid.y, centroid.x]
+        m.options['zoom'] = 14.5
         
     st_folium(m, width="100%", height=height)
     return legend_items
