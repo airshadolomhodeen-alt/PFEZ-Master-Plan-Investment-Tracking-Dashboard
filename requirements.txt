@@ -5,3 +5,5 @@ plotly
 shapely
 pyproj
 pydeck
+folium
+streamlit-folium
