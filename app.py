@@ -1,11 +1,11 @@
 import os
-import json
 import colorsys
 import pandas as pd
 import geopandas as gpd
-import pydeck as pdk
-import plotly.express as px
 import streamlit as st
+import folium
+from streamlit_folium import st_folium
+import plotly.express as px
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -146,25 +146,36 @@ def load_project_data():
 
 df_projects = load_project_data()
 
-# --- HELPER FUNCTION FOR SMART MAP RENDERING WITH ESRI TILES ---
-def render_multi_layer_map(selected_files, height=400):
+# --- HELPER FUNCTION FOR BRIGHT FOLIUM ESRI MAP RENDERING ---
+def render_multi_layer_map(selected_files, height=450):
     all_gdfs = []
-    layers = []
     legend_items = []
-    
     total_files = max(len(selected_files), 1)
+    
+    # Initialize Folium Map
+    m = folium.Map(location=[7.34, 124.28], zoom_start=14, tiles=None)
+    
+    # Esri World Street Map Tile Layer (Bright & Clean)
+    esri_tile_url = "https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+    esri_attribution = "Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012"
+    
+    folium.TileLayer(
+        tiles=esri_tile_url,
+        attr=esri_attribution,
+        name="esriworldstreetmap",
+        control=True,
+        max_zoom=19
+    ).add_to(m)
     
     for idx, file_name in enumerate(selected_files):
         try:
             gdf = gpd.read_file(file_name)
             display_name = file_name.replace(".geojson", "").replace("_", " ").title()
             
-            # Dynamically generate 100% unique hues distributed evenly across the color spectrum
             hue = idx / total_files
-            rgb_float = colorsys.hls_to_rgb(hue, 0.60, 0.85)
-            color = [int(rgb_float[0] * 255), int(rgb_float[1] * 255), int(rgb_float[2] * 255), 185]
-            
-            rgb_css = f"rgba({color[0]}, {color[1]}, {color[2]}, 0.85)"
+            rgb_float = colorsys.hls_to_rgb(hue, 0.55, 0.85)
+            hex_color = '#%02x%02x%02x' % (int(rgb_float[0] * 255), int(rgb_float[1] * 255), int(rgb_float[2] * 255))
+            rgb_css = f"rgba({int(rgb_float[0]*255)}, {int(rgb_float[1]*255)}, {int(rgb_float[2]*255)}, 0.85)"
             legend_items.append((display_name, rgb_css))
             
             if not gdf.empty:
@@ -173,64 +184,36 @@ def render_multi_layer_map(selected_files, height=400):
                 all_gdfs.append(gdf)
                 
                 if "PFEZ Boundaries" in file_name or "boundary" in file_name.lower():
-                    layer = pdk.Layer(
-                        "GeoJsonLayer",
-                        json.loads(gdf.to_json()),
-                        pickable=True,
-                        stroked=True,
-                        filled=False,
-                        get_line_color=[20, 20, 20, 255],
-                        get_line_width=45,
-                        line_width_min_pixels=3,
-                    )
+                    folium.GeoJson(
+                        gdf,
+                        name=display_name,
+                        style_function=lambda x: {
+                            'fillColor': 'transparent',
+                            'color': '#111111',
+                            'weight': 3,
+                            'fillOpacity': 0
+                        }
+                    ).add_to(m)
                 else:
-                    layer = pdk.Layer(
-                        "GeoJsonLayer",
-                        json.loads(gdf.to_json()),
-                        pickable=True,
-                        stroked=True,
-                        filled=True,
-                        get_fill_color=color,
-                        get_line_color=[40, 40, 40, 220],
-                        get_line_width=20,
-                    )
-                layers.append(layer)
+                    folium.GeoJson(
+                        gdf,
+                        name=display_name,
+                        style_function=lambda x, color=hex_color: {
+                            'fillColor': color,
+                            'color': '#333333',
+                            'weight': 1.5,
+                            'fillOpacity': 0.75
+                        }
+                    ).add_to(m)
         except Exception:
             pass
 
     if all_gdfs:
         combined_gdf = pd.concat(all_gdfs, ignore_index=True)
         centroid = combined_gdf.geometry.unary_union.centroid
+        m.location = [centroid.y, centroid.x]
         
-        view_state = pdk.ViewState(
-            latitude=centroid.y,
-            longitude=centroid.x,
-            zoom=14.2,  # Close zoom level as requested
-            pitch=0,
-            bearing=85,
-        )
-        
-        # Esri World Street Map TileLayer
-        esri_tile_layer = pdk.Layer(
-            "TileLayer",
-            data="https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-            min_zoom=0,
-            max_zoom=19,
-            tileSize=256,
-        )
-        
-        deck_layers = [esri_tile_layer] + layers
-        
-        r = pdk.Deck(
-            layers=deck_layers,
-            initial_view_state=view_state,
-            map_style=None,
-            tooltip={"text": "Zoning Layer Feature: {name}" if "name" in combined_gdf.columns else "Zoning Layer Feature"}
-        )
-        st.pydeck_chart(r, use_container_width=True, height=height)
-    else:
-        st.warning("Select at least one valid layer to display on the map.")
-        
+    st_folium(m, width="100%", height=height)
     return legend_items
 
 # --- 1. DASHBOARD HOME VIEW ---
@@ -338,8 +321,6 @@ elif nav_selection == "Spatial Map Viewer":
             
             with map_col:
                 legend_items = render_multi_layer_map(selected_layers, height=560)
-                # Attribution note below map matching user request
-                st.markdown("<p style='font-size: 10px; color: #8B949E; text-align: right; margin-top: 4px;'>Tiles © Esri — Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012</p>", unsafe_allow_html=True)
                 
             with legend_col:
                 st.markdown("### 🗂️ Zoning Layers Legend")
