@@ -147,10 +147,10 @@ df_projects = load_project_data()
 
 # --- HELPER FUNCTION FOR SMART MAP RENDERING ---
 def render_multi_layer_map(selected_files, height=400):
-    # Base map: Esri World Street Map TileLayer
+    # Base map: Esri World Imagery (Satellite view matching QGIS layout)
     basemap_layer = pdk.Layer(
         "TileLayer",
-        data="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+        data="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         min_zoom=0,
         max_zoom=19,
         tileSize=256,
@@ -159,12 +159,12 @@ def render_multi_layer_map(selected_files, height=400):
     all_gdfs = []
     
     color_palette = [
-        [88, 166, 255, 160],   # Transparent Blue fill
-        [46, 160, 67, 160],    # Transparent Green fill
-        [210, 153, 34, 160],   # Transparent Yellow fill
-        [248, 81, 73, 160],    # Transparent Red fill
-        [137, 87, 229, 160],   # Transparent Purple fill
-        [57, 211, 83, 160],    # Transparent Neon Green fill
+        [248, 81, 73, 160],   # Red / Pink
+        [210, 153, 34, 160],   # Yellow / Orange
+        [46, 160, 67, 160],    # Green
+        [88, 166, 255, 160],   # Blue
+        [137, 87, 229, 160],   # Purple
+        [57, 211, 83, 160],    # Light Green
     ]
     
     legend_items = []
@@ -218,7 +218,7 @@ def render_multi_layer_map(selected_files, height=400):
             longitude=centroid.x,
             zoom=13,
             pitch=0,
-            bearing=-85,
+            bearing=-85,  # Matches the -85 degree rotation from QGIS
         )
         
         r = pdk.Deck(
@@ -229,12 +229,12 @@ def render_multi_layer_map(selected_files, height=400):
         )
         st.pydeck_chart(r, use_container_width=True, height=height)
         
-        # Render dynamic legend for selected zones
+        # Render dynamic legend for all currently selected zones
         if legend_items:
             legend_html = """
-            <div style="background-color: #161B22; padding: 10px; border-radius: 6px; border: 1px solid #30363D; margin-top: 10px;">
-                <div style="font-size: 12px; font-weight: bold; color: #FAFAFA; margin-bottom: 6px;">Active Zone Legend</div>
-                <div style="display: flex; flex-wrap: wrap; gap: 14px;">
+            <div style="background-color: #161B22; padding: 12px; border-radius: 6px; border: 1px solid #30363D; margin-top: 10px;">
+                <div style="font-size: 13px; font-weight: bold; color: #FAFAFA; margin-bottom: 8px;">Active Zone Legend</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 16px;">
             """
             for name, col in legend_items:
                 legend_html += f"""
