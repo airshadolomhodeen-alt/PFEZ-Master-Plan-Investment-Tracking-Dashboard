@@ -147,26 +147,18 @@ df_projects = load_project_data()
 
 # --- HELPER FUNCTION FOR SMART MAP RENDERING ---
 def render_multi_layer_map(selected_files, height=400):
-    # Base map: Esri World Imagery (Satellite view matching QGIS layout)
-    basemap_layer = pdk.Layer(
-        "TileLayer",
-        data="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        min_zoom=0,
-        max_zoom=19,
-        tileSize=256,
-    )
-    layers = [basemap_layer]
     all_gdfs = []
     
     color_palette = [
-        [248, 81, 73, 160],   # Red / Pink
-        [210, 153, 34, 160],   # Yellow / Orange
-        [46, 160, 67, 160],    # Green
-        [88, 166, 255, 160],   # Blue
-        [137, 87, 229, 160],   # Purple
-        [57, 211, 83, 160],    # Light Green
+        [248, 81, 73, 180],   # Red / Pink
+        [210, 153, 34, 180],   # Yellow / Orange
+        [46, 160, 67, 180],    # Green
+        [88, 166, 255, 180],   # Blue
+        [137, 87, 229, 180],   # Purple
+        [57, 211, 83, 180],    # Light Green
     ]
     
+    layers = []
     legend_items = []
     
     for idx, file_name in enumerate(selected_files):
@@ -175,7 +167,7 @@ def render_multi_layer_map(selected_files, height=400):
             display_name = file_name.replace(".geojson", "").replace("_", " ").title()
             color = color_palette[idx % len(color_palette)]
             
-            rgb_css = f"rgba({color[0]}, {color[1]}, {color[2]}, 0.8)"
+            rgb_css = f"rgba({color[0]}, {color[1]}, {color[2]}, 0.85)"
             legend_items.append((display_name, rgb_css))
             
             if not gdf.empty:
@@ -190,7 +182,7 @@ def render_multi_layer_map(selected_files, height=400):
                         pickable=True,
                         stroked=True,
                         filled=False,
-                        get_line_color=[255, 255, 255, 255],
+                        get_line_color=[30, 30, 30, 255],
                         get_line_width=45,
                         line_width_min_pixels=3,
                     )
@@ -202,7 +194,7 @@ def render_multi_layer_map(selected_files, height=400):
                         stroked=True,
                         filled=True,
                         get_fill_color=color,
-                        get_line_color=[255, 255, 255, 200],
+                        get_line_color=[50, 50, 50, 220],
                         get_line_width=20,
                     )
                 layers.append(layer)
@@ -218,18 +210,20 @@ def render_multi_layer_map(selected_files, height=400):
             longitude=centroid.x,
             zoom=13,
             pitch=0,
-            bearing=-85,  # Matches the -85 degree rotation from QGIS
+            bearing=-85,  # Exact -85 rotation matching QGIS
         )
         
+        # Using standard Carto Positron (light eye-friendly base map) with Esri World Street Map style URL via map_style
         r = pdk.Deck(
             layers=layers,
             initial_view_state=view_state,
-            map_style=None,
+            map_style="light",  # Ensures bright, eye-friendly canvas background
+            map_provider="carto",
             tooltip={"text": "Zoning Layer Feature: {name}" if "name" in combined_gdf.columns else "Zoning Layer Feature"}
         )
         st.pydeck_chart(r, use_container_width=True, height=height)
         
-        # Render dynamic legend for all currently selected zones
+        # Render dynamic legend showing all selected zones
         if legend_items:
             legend_html = """
             <div style="background-color: #161B22; padding: 12px; border-radius: 6px; border: 1px solid #30363D; margin-top: 10px;">
