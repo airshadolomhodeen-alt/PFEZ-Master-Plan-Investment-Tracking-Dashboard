@@ -146,7 +146,7 @@ def load_project_data():
 
 df_projects = load_project_data()
 
-# --- HELPER FUNCTION FOR SMART MAP RENDERING ---
+# --- HELPER FUNCTION FOR SMART MAP RENDERING WITH ESRI TILES ---
 def render_multi_layer_map(selected_files, height=400):
     all_gdfs = []
     layers = []
@@ -205,12 +205,12 @@ def render_multi_layer_map(selected_files, height=400):
         view_state = pdk.ViewState(
             latitude=centroid.y,
             longitude=centroid.x,
-            zoom=14.2,
+            zoom=14.2,  # Close zoom level as requested
             pitch=0,
             bearing=85,
         )
         
-        # Esri World Street Map TileLayer configuration
+        # Esri World Street Map TileLayer
         esri_tile_layer = pdk.Layer(
             "TileLayer",
             data="https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
@@ -219,13 +219,12 @@ def render_multi_layer_map(selected_files, height=400):
             tileSize=256,
         )
         
-        # Combine Esri tile layer at the bottom with vector zoning layers on top
         deck_layers = [esri_tile_layer] + layers
         
         r = pdk.Deck(
             layers=deck_layers,
             initial_view_state=view_state,
-            map_style=None,  # Custom tile layer used instead of default basemap
+            map_style=None,
             tooltip={"text": "Zoning Layer Feature: {name}" if "name" in combined_gdf.columns else "Zoning Layer Feature"}
         )
         st.pydeck_chart(r, use_container_width=True, height=height)
