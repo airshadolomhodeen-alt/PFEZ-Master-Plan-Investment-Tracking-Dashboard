@@ -685,58 +685,90 @@ elif nav_selection == "Manpower Justification":
         st.dataframe(roles_table, use_container_width=True, height=340)
 
 # ==========================================
-# MODULE 1: REVENUE ANALYTICS & FORECASTING
+# MODULE 5: REVENUE ANALYTICS & FORECASTING
 # ==========================================
-if selected_module == "Revenue Analytics & Forecasting":
+elif selected_module == "Revenue Analytics & Forecasting":
     st.header("📈 Revenue Analytics & Forecasting")
     st.write("Executive financial tracking, stream decomposition, and strategic long-term forecast models.")
     
-    df_hist = load_historical_data()
-    df_forecast = load_forecast_data()
+    # 1. Safely load datasets
+    try:
+        df_hist = load_historical_data()
+        df_forecast = load_forecast_data()
+    except NameError as e:
+        st.error(f"⚠️ Function Definition Error: {e}. Please ensure data loader functions are defined at the top of app.py.")
+        df_hist, df_forecast = None, None
 
-    # 1. Historical Revenue Chart
-    fig1 = render_historical_revenue_chart(
-        df=df_hist,
-        date_col="observation_date",
-        revenue_col="total_revenue",
-        monthly_target=2500000.0,
-        unit_scale=1e6
-    )
-    if fig1:
-        st.plotly_chart(fig1, use_container_width=True, config=get_executive_config())
+    # 2. Historical Revenue Chart
+    if df_hist is not None and not df_hist.empty:
+        try:
+            fig1 = render_historical_revenue_chart(
+                df=df_hist,
+                date_col="observation_date",
+                revenue_col="total_revenue",
+                monthly_target=2500000.0,
+                unit_scale=1e6
+            )
+            if fig1:
+                st.plotly_chart(
+                    fig1, 
+                    use_container_width=True, 
+                    config=get_executive_config() if "get_executive_config" in globals() else {}
+                )
+        except Exception as e:
+            st.error(f"Error rendering Historical Revenue Chart: {e}")
 
-    st.markdown("---")
+        st.markdown("---")
 
-    # 2. Revenue Breakdown Chart
-    fig2 = render_revenue_breakdown_chart(
-        df=df_hist,
-        date_col="observation_date",
-        trad_col="traditional_rev",
-        nontrad_col="nontraditional_rev",
-        unit_scale=1e6
-    )
-    if fig2:
-        st.plotly_chart(fig2, use_container_width=True, config=get_executive_config())
+        # 3. Revenue Breakdown Chart
+        try:
+            fig2 = render_revenue_breakdown_chart(
+                df=df_hist,
+                date_col="observation_date",
+                trad_col="traditional_rev",
+                nontrad_col="nontraditional_rev",
+                unit_scale=1e6
+            )
+            if fig2:
+                st.plotly_chart(
+                    fig2, 
+                    use_container_width=True, 
+                    config=get_executive_config() if "get_executive_config" in globals() else {}
+                )
+        except Exception as e:
+            st.error(f"Error rendering Revenue Breakdown Chart: {e}")
 
-    st.markdown("---")
+        st.markdown("---")
+    else:
+        st.warning("Historical dataset could not be loaded or is empty.")
 
-    # 3. Forecast Chart
-    milestones = {
-        2028: "Phase I PAPs Online",
-        2032: "Phase II Port Expansion",
-        2036: "Full Logistics Integration"
-    }
-    
-    fig3 = render_revenue_forecast_chart(
-        df=df_forecast,
-        year_col="fiscal_year",
-        bau_col="bau_projection",
-        masterplan_col="master_plan_val",
-        unit_scale=1e6,
-        milestones=milestones
-    )
-    if fig3:
-        st.plotly_chart(fig3, use_container_width=True, config=get_executive_config())
+    # 4. Forecast Chart
+    if df_forecast is not None and not df_forecast.empty:
+        milestones = {
+            2028: "Phase I PAPs Online",
+            2032: "Phase II Port Expansion",
+            2036: "Full Logistics Integration"
+        }
+        
+        try:
+            fig3 = render_revenue_forecast_chart(
+                df=df_forecast,
+                year_col="fiscal_year",
+                bau_col="bau_projection",
+                masterplan_col="master_plan_val",
+                unit_scale=1e6,
+                milestones=milestones
+            )
+            if fig3:
+                st.plotly_chart(
+                    fig3, 
+                    use_container_width=True, 
+                    config=get_executive_config() if "get_executive_config" in globals() else {}
+                )
+        except Exception as e:
+            st.error(f"Error rendering Forecast Chart: {e}")
+    else:
+        st.warning("Forecast dataset could not be loaded or is empty.")
 
 # ==========================================
 # MODULE 6: SPATIAL MAP VIEWER (RESTORED MULTI-ZONE RENDERING)
