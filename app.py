@@ -123,7 +123,6 @@ def load_masterplan_data():
         df['Phase'] = df['PROJECT NO.'].apply(assign_phase)
         return df
     else:
-        # Fallback dataset if file is missing
         p_list = list(range(1, 96))
         phases = ["Phase 1 (2026–2030)"]*39 + ["Phase 2 (2029–2035)"]*32 + ["Phase 3 (2032–2038)"]*16 + ["Phase 4 (2035–2040)"]*8
         return pd.DataFrame({
@@ -244,7 +243,7 @@ st.sidebar.markdown(
     </div>
     <div style='font-size: 11px; color: #8B949E; margin-top: 4px; line-height: 1.3;'>
         📱 0975-256-9055 / 0929-336-7787<br>
-        ✉️️ airsadolomodin@gmail.com
+        ✉ airsadolomodin@gmail.com
     </div>
     """,
     unsafe_allow_html=True,
@@ -325,7 +324,6 @@ def render_multi_layer_map(selected_files, height=310):
 # ==========================================
 if nav_selection == "Dashboard Home":
 
-    # --- STRATEGIC THESIS CALLOUT BANNER ---
     st.markdown(
         f"""
         <div class="callout-box">
@@ -343,7 +341,6 @@ if nav_selection == "Dashboard Home":
         unsafe_allow_html=True,
     )
 
-    # --- KEY EXECUTIVE METRICS ---
     k1, k2, k3, k4 = st.columns(4)
     with k1:
         st.metric(label="Total Capital Budget", value=f"PhP {df_master['Cost_PhP_B'].sum():.3f} Billion", delta=f"{len(df_master)} Official PAPs Across 4 Phases")
@@ -357,7 +354,6 @@ if nav_selection == "Dashboard Home":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- BULL'S EYE EVALUATOR VIEW: PHASE 1 TO PHASE 4 IMPLEMENTATION SUMMARY ---
     st.markdown("### 🎯 Evaluator Bull's Eye View: Phase 1 to Phase 4 Implementation Roadmap")
     
     phase_summary = df_master.groupby('Phase').agg(
@@ -421,7 +417,6 @@ if nav_selection == "Dashboard Home":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- CHARTS ROW 1 ---
     c_col1, c_col2 = st.columns(2)
     
     with c_col1:
@@ -466,7 +461,6 @@ if nav_selection == "Dashboard Home":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- CHARTS ROW 2 ---
     bot_col1, bot_col2 = st.columns(2)
     
     with bot_col1:
@@ -678,22 +672,56 @@ elif nav_selection == "Revenue Analytics & Forecasting":
     st.title("📈 Revenue Collection Analytics & Master Plan Forecasting")
     st.markdown("Historical revenue analysis (2024–2026) and long-term financial modeling under the **PFEZ Master Plan PAPs (2026–2040)**.")
 
+    # --- REVENUE CLASSIFICATION CARDS ---
+    st.markdown("### 💡 Revenue Stream Definitions & Classification")
+    
+    rev_col1, rev_col2 = st.columns(2)
+    with rev_col1:
+        st.markdown(
+            """
+            <div style="background-color: #161B22; border-left: 4px solid #A371F7; border-top: 1px solid #30363D; border-right: 1px solid #30363D; border-bottom: 1px solid #30363D; padding: 14px 18px; border-radius: 8px; height: 100%;">
+                <h4 style="margin: 0 0 6px 0; color: #A371F7; font-size: 16px;">⚓ Traditional Revenue</h4>
+                <p style="margin: 0 0 8px 0; color: #C9D1D9; font-size: 12px; font-weight: 600;">Core Maritime & Vessel Operations</p>
+                <p style="margin: 0; color: #8B949E; font-size: 12px; line-height: 1.4;">
+                    Generated directly from <b>Domestic and Foreign Vessels ship calls</b>. Includes port dues, berthing/dockage fees, cargo wharfage, pilotage, and vessel tonnage fees. Highly dependent on shipping schedules and global trade cycles.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    with rev_col2:
+        st.markdown(
+            """
+            <div style="background-color: #161B22; border-left: 4px solid #F0883E; border-top: 1px solid #30363D; border-right: 1px solid #30363D; border-bottom: 1px solid #30363D; padding: 14px 18px; border-radius: 8px; height: 100%;">
+                <h4 style="margin: 0 0 6px 0; color: #F0883E; font-size: 16px;">🏢 Non-Traditional Revenue</h4>
+                <p style="margin: 0 0 8px 0; color: #C9D1D9; font-size: 12px; font-weight: 600;">Ecozone Real Estate, Logistics & Value-Added Services</p>
+                <p style="margin: 0; color: #8B949E; font-size: 12px; line-height: 1.4;">
+                    Derived from commercial land assets and ecozone facilities. Includes <b>Lease of Contracts, Space Rentals, Container Yard Terminals, and other commercial operations</b>. Provides predictable, contractual long-term income.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
     st.markdown("### 1. Historical Revenue Breakdown")
     
     fig_hist = go.Figure()
-    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Traditional"], mode='lines+markers', name='Traditional Revenue', line=dict(color='#A371F7')))
-    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Non_Traditional"], mode='lines+markers', name='Non-Traditional Revenue', line=dict(color='#F0883E')))
+    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Traditional"], mode='lines+markers', name='Traditional Revenue (Ship Calls)', line=dict(color='#A371F7', width=2)))
+    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Non_Traditional"], mode='lines+markers', name='Non-Traditional Revenue (Leases/Rentals)', line=dict(color='#F0883E', width=2)))
     fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Collected_Revenue"], mode='lines+markers', name='Total Revenue Collected', line=dict(width=3, color='#58A6FF')))
     
     fig_hist.update_layout(
         template="plotly_dark",
-        title="Monthly Revenue Collections (PhP)",
+        title="Monthly Revenue Collections by Stream (PhP)",
         xaxis_title="Timeline",
         yaxis_title="Revenue (PhP)",
-        height=360,
+        height=380,
         margin=dict(l=10, r=10, t=40, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
+        plot_bgcolor="rgba(0,0,0,0)",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
     st.plotly_chart(fig_hist, use_container_width=True)
 
