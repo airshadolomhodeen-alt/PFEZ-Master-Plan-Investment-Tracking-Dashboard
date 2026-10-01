@@ -149,7 +149,7 @@ def load_masterplan_data():
         })
 
 
-# --- LOAD REVENUE DATA PRESERVING EXACT EXCEL STRUCTURE ---
+# --- LOAD REVENUE DATA PRESERVING EXCEL STRUCTURE ---
 def load_revenue_data():
     if os.path.exists(EXCEL_FILE):
         try:
@@ -164,7 +164,7 @@ def load_revenue_data():
 
 
 def prepare_clean_time_series(df):
-    """Retains all 2024-2026 historical entries while dropping empty/zero rows."""
+    """Retains historical entries across 2024–2026 while skipping headers/blank records."""
     clean_records = []
     month_col = df.columns[0]
     target_col = None
@@ -218,7 +218,7 @@ def prepare_clean_time_series(df):
 
 
 def get_total_revenue_value(df):
-    """Calculates total revenue without altering original columns."""
+    """Calculates total revenue collection without modifying original columns."""
     clean_df = prepare_clean_time_series(df)
     if not clean_df.empty:
         return clean_df["Revenue"].sum()
