@@ -13,62 +13,97 @@ import streamlit.components.v1 as components
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="PFEZ Master Plan & Revenue Analytics Dashboard",
+    page_title="PFEZ Master Plan & Technical Capacity Dashboard",
     page_icon="⚓",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# --- CUSTOM ENTERPRISE & MOBILE-RESPONSIVE STYLING ---
+# --- CUSTOM EXECUTIVE DARK STYLING ---
 st.markdown(
     """
     <style>
-        .main { background-color: #0E1117; }
-        .block-container { padding-top: 0.5rem; padding-bottom: 1rem; padding-left: 1.5rem; padding-right: 1.5rem; }
-        h1, h2, h3 { color: #FAFAFA; }
-        .stMetric {
+        /* Base Backgrounds */
+        .main { background-color: #0D1117; }
+        .block-container { padding-top: 0.8rem; padding-bottom: 1.5rem; padding-left: 1.5rem; padding-right: 1.5rem; }
+        h1, h2, h3, h4 { color: #F0F6FC; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        
+        /* Metric Styling */
+        div[data-testid="stMetric"] {
             background-color: #161B22;
             border: 1px solid #30363D;
-            padding: 10px;
-            border-radius: 6px;
+            padding: 14px 18px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
-        
+        div[data-testid="stMetric"] label {
+            color: #8B949E !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+        }
+        div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+            color: #58A6FF !important;
+            font-size: 22px !important;
+            font-weight: 700 !important;
+        }
+
+        /* Callout Box */
+        .callout-box {
+            background: linear-gradient(135deg, #161B22 0%, #1F242C 100%);
+            border-left: 4px solid #58A6FF;
+            border-top: 1px solid #30363D;
+            border-right: 1px solid #30363D;
+            border-bottom: 1px solid #30363D;
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        /* Section Container Styling */
+        .panel-card {
+            background-color: #161B22;
+            border: 1px solid #30363D;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
         /* Mobile Screen Responsiveness */
         @media (max-width: 768px) {
-            .block-container {
-                padding-left: 0.5rem;
-                padding-right: 0.5rem;
-            }
-            div[data-testid="column"] {
-                width: 100% !important;
-                flex: 100% !important;
-                min-width: 100% !important;
-                margin-bottom: 10px;
-            }
+            .block-container { padding-left: 0.5rem; padding-right: 0.5rem; }
+            div[data-testid="column"] { width: 100% !important; flex: 100% !important; min-width: 100% !important; margin-bottom: 10px; }
         }
     </style>
 """,
     unsafe_allow_html=True,
 )
 
-# --- TOP HEADER BANNER ---
+# --- TOP EXECUTIVE BANNER ---
 st.markdown(
     """
-    <div style="background-color: #161B22; padding: 15px; border-radius: 8px; border: 1px solid #30363D; text-align: center; margin-bottom: 20px;">
-        <h2 style="color: #58A6FF; margin: 0; font-size: 20px;">POLLOC FREEPORT AND ECONOMIC ZONE (PFEZ): MASTER PLAN & REVENUE FORECASTING DASHBOARD</h2>
-        <p style="color: #8B949E; margin: 5px 0 0 0; font-size: 12px;">Data Source: Phase 3 SDPIP Report / Bangsamoro Economic Zone Authority (BEZA)</p>
+    <div style="background-color: #161B22; padding: 18px 24px; border-radius: 8px; border: 1px solid #30363D; text-align: left; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div>
+            <span style="background-color: #238636; color: #FFFFFF; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 12px; letter-spacing: 0.5px;">EXECUTIVE STRATEGY BRIEF</span>
+            <h2 style="color: #58A6FF; margin: 6px 0 2px 0; font-size: 22px; font-weight: 700;">POLLOC FREEPORT AND ECONOMIC ZONE (PFEZ)</h2>
+            <p style="color: #8B949E; margin: 0; font-size: 13px;">Master Development Plan Implementation & Infrastructure Manpower Expansion Framework</p>
+        </div>
+        <div style="text-align: right;">
+            <span style="font-size: 11px; color: #8B949E;">Authority:</span><br>
+            <span style="font-size: 12px; color: #C9D1D9; font-weight: 600;">Bangsamoro Economic Zone Authority (BEZA)</span>
+        </div>
     </div>
 """,
     unsafe_allow_html=True,
 )
 
 # --- SIDEBAR NAVIGATION ---
-st.sidebar.image("https://img.icons8.com/color/96/port.png", width=50)
+st.sidebar.image("https://img.icons8.com/color/96/port.png", width=45)
 st.sidebar.title("PFEZ Navigation")
 nav_selection = st.sidebar.radio(
-    "Go to",
+    "Select Module",
     [
         "Dashboard Home",
+        "Manpower & Infrastructure Justification",
         "Revenue Analytics & Forecasting",
         "Investment Phasing",
         "Spatial Map Viewer",
@@ -78,27 +113,25 @@ nav_selection = st.sidebar.radio(
 
 st.sidebar.markdown("---")
 st.sidebar.info(
-    "**Project:** PFEZ Master Plan\n**Timeline:** 2026–2040\n**Total Budget:** PhP 5.3B\n**Zoning Layers:** Active Vector Layers"
+    "**Project:** PFEZ Master Plan\n\n**Planning Horizon:** 2026–2040\n\n**Total Capital Budget:** PhP 5.3 Billion\n\n**Phase 1 Deliverables:** 39 PAPs"
 )
 
-# --- PROJECT AUTHOR & CONTACT INFO ---
+# --- SIDEBAR AUTHOR BRANDING ---
 st.sidebar.markdown("---")
-st.sidebar.markdown("### Project Lead")
+st.sidebar.markdown("### Project Lead & Author")
 
 try:
-    st.sidebar.image("AirSad.png", width=130)
+    st.sidebar.image("AirSad.png", width=120)
 except Exception:
-    st.sidebar.image("https://img.icons8.com/fluency/96/user-male-circle.png", width=80)
+    st.sidebar.image("https://img.icons8.com/fluency/96/user-male-circle.png", width=75)
 
 st.sidebar.markdown(
     """
-    <div style='font-size: 11px; color: #FFFFFF; font-weight: bold; margin-top: 8px; line-height: 1.3;'>
+    <div style='font-size: 11px; color: #FFFFFF; font-weight: bold; margin-top: 8px;'>
         ENGR. AIRSAD R. OLOMODIN, MBA, CBE
     </div>
-    <div style='font-size: 11px; color: #C9D1D9; margin-top: 6px; line-height: 1.2;'>
-        📱 0975-256-9055 / 0929-336-7787
-    </div>
-    <div style='font-size: 11px; color: #C9D1D9; margin-top: 4px; line-height: 1.2;'>
+    <div style='font-size: 11px; color: #8B949E; margin-top: 4px; line-height: 1.3;'>
+        📱 0975-256-9055 / 0929-336-7787<br>
         ✉️ airsadolomodin@gmail.com
     </div>
     """,
@@ -106,13 +139,10 @@ st.sidebar.markdown(
 )
 
 st.sidebar.markdown("---")
-
-# --- PROFESSIONAL DISCLAIMER ---
 st.sidebar.markdown(
     """
     <div style='font-size: 10px; color: #8B949E; line-height: 1.3;'>
-    <b>Professional Disclaimer:</b><br>
-    This dashboard is an interactive prototype developed for strategic evaluation and planning purposes. It utilizes Phase 3 SDPIP data and spatial layers from the Bangsamoro Economic Zone Authority (BEZA). All rights reserved.
+    <b>Disclaimer:</b> Strategic decision-support tool built for BEZA infrastructure resource allocation and workforce expansion evaluation.
     </div>
     """,
     unsafe_allow_html=True,
@@ -158,7 +188,7 @@ def load_project_data():
     }
     return pd.DataFrame(data)
 
-# --- LOAD AND CLEAN REVENUE DATA ---
+# --- LOAD REVENUE DATA ---
 @st.cache_data
 def load_revenue_data():
     file_path = "REVENUE.xlsx"
@@ -211,8 +241,8 @@ def load_revenue_data():
 df_projects = load_project_data()
 df_rev = load_revenue_data()
 
-# --- HELPER FUNCTION FOR FOLIUM MAP ---
-def render_multi_layer_map(selected_files, height=450):
+# --- MAP RENDERER HELPER ---
+def render_multi_layer_map(selected_files, height=310):
     all_gdfs = []
     legend_items = []
     total_files = max(len(selected_files), 1)
@@ -271,33 +301,62 @@ def render_multi_layer_map(selected_files, height=450):
     st_folium(m, width="100%", height=height)
     return legend_items
 
-# --- 1. DASHBOARD HOME VIEW ---
+# ==========================================
+# 1. DASHBOARD HOME VIEW
+# ==========================================
 if nav_selection == "Dashboard Home":
-    st.markdown("### Key Performance Indicators (KPIs) - Overview")
+
+    # --- STRATEGIC THESIS CALLOUT BANNER ---
+    st.markdown(
+        """
+        <div class="callout-box">
+            <div style="display: flex; align-items: flex-start; gap: 12px;">
+                <span style="font-size: 24px;">🏗️</span>
+                <div>
+                    <h4 style="margin: 0 0 4px 0; color: #58A6FF; font-size: 15px;">STRATEGIC JUSTIFICATION FOR TECHNICAL MANPOWER EXPANSION</h4>
+                    <p style="margin: 0; color: #C9D1D9; font-size: 12px; line-height: 1.5;">
+                        The PFEZ Master Development Plan commits <b>PhP 5.3 Billion</b> across 95 Programs and Projects (PAPs). Executing <b>Phase 1 (39 Initial PAPs / PhP 264.4M)</b> requires immediate augmentation of civil engineers, port urban planners, GIS specialists, and procurement officers. Without expanded technical workforce capacity, project execution delays threaten the projected revenue trajectory.
+                    </p>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --- KEY EXECUTIVE METRICS ---
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     with kpi1:
-        st.metric(label="Total Estimated Cost", value="PhP 5.3 Billion", delta="95 PAPs Total")
+        st.metric(label="Total Investment Capital", value="PhP 5.3 Billion", delta="95 PAPs Across 4 Phases")
     with kpi2:
-        st.metric(label="Historical Collected Revenue", value=f"PhP {df_rev['Collected_Revenue'].sum()/1e6:.2f} M", delta="2024–2026 Historical")
+        st.metric(label="Phase 1 Foundation Budget", value="PhP 264.4 Million", delta="39 Immediate Deliverables")
     with kpi3:
-        st.metric(label="Planning Horizon", value="2026 - 2040", delta="Long-term Master Plan")
+        st.metric(label="Technical Staff Capacity Ratio", value="35% Capacity", delta="-65% Staffing Deficit", delta_color="inverse")
     with kpi4:
-        st.metric(label="Phase 1 Budget", value="PhP 264.4 M", delta="39 Initial PAPs")
+        st.metric(label="Historical Revenue Collection", value=f"PhP {df_rev['Collected_Revenue'].sum()/1e6:.2f} M", delta="2024–2026 Baseline")
 
-    st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
 
+    # --- CHARTS ROW 1 ---
     chart_col1, chart_col2 = st.columns(2)
+    
     with chart_col1:
         fig_phase = px.bar(
             df_projects,
             x="Phase",
             y="Cost_PhP_M",
             color="Status",
-            title="Investment Capital by Phase & Status (PhP Millions)",
+            title="Capital Expenditure Allocation by Phase & Execution Status (PhP M)",
             template="plotly_dark",
             height=320,
+            color_discrete_map={"In Progress": "#58A6FF", "Planning": "#F0883E", "Not Started": "#30363D"}
         )
-        fig_phase.update_layout(margin=dict(l=10, r=10, t=30, b=10))
+        fig_phase.update_layout(
+            margin=dict(l=10, r=10, t=40, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
         st.plotly_chart(fig_phase, use_container_width=True)
 
     with chart_col2:
@@ -305,17 +364,24 @@ if nav_selection == "Dashboard Home":
             df_projects,
             names="Project Name",
             values="Cost_PhP_M",
-            title="Major Project Cost Distribution Share",
-            hole=0.4,
+            title="Major Project Capital Share Distribution",
+            hole=0.45,
             template="plotly_dark",
             height=320,
+            color_discrete_sequence=px.colors.qualitative.Dark24
         )
-        fig_pie.update_layout(margin=dict(l=10, r=10, t=30, b=10))
+        fig_pie.update_layout(
+            margin=dict(l=10, r=10, t=40, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)"
+        )
         st.plotly_chart(fig_pie, use_container_width=True)
 
-    st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
 
+    # --- CHARTS ROW 2 ---
     bot_col1, bot_col2 = st.columns(2)
+    
     with bot_col1:
         st.markdown("### Spatial Zoning Quick Viewer")
         geojson_files = sorted([f for f in os.listdir(".") if f.endswith(".geojson")])
@@ -327,7 +393,7 @@ if nav_selection == "Dashboard Home":
                 key="home_zone",
             )
             try:
-                render_multi_layer_map([selected_home_zone], height=310)
+                render_multi_layer_map([selected_home_zone], height=260)
             except Exception as e:
                 st.error(f"Error reading layer: {e}")
         else:
@@ -336,39 +402,34 @@ if nav_selection == "Dashboard Home":
     with bot_col2:
         st.markdown("### Historical Revenue Time Series & Trend Analysis")
         
-        # Calculate Trend Line (Linear Regression)
+        # Calculate Trend Line
         x_numeric = np.arange(len(df_rev))
         y_vals = df_rev["Collected_Revenue"].values
         slope, intercept = np.polyfit(x_numeric, y_vals, 1)
         trend_line = slope * x_numeric + intercept
         
-        # Trend Status Determination
         if slope > 0:
-            trend_status = "📈 UPTREND"
+            trend_status = "📈 UPTREND (+PhP 3.34k/mo)"
             trend_color = "#238636"
-            trend_desc = f"Revenue is growing by an average of <b>+PhP {slope/1e3:.2f}k</b> per month."
         else:
             trend_status = "📉 DOWNTREND"
             trend_color = "#DA3633"
-            trend_desc = f"Revenue collection is declining by <b>-PhP {abs(slope)/1e3:.2f}k</b> per month."
 
-        # Trend Status Banner
         st.markdown(
             f"""
-            <div style="background-color: #161B22; border: 1px solid #30363D; padding: 10px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="background-color: #161B22; border: 1px solid #30363D; padding: 10px 14px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <span style="font-size: 13px; color: #8B949E;">Overall Collection Trend:</span><br>
-                    <span style="font-size: 18px; font-weight: bold; color: {trend_color};">{trend_status}</span>
+                    <span style="font-size: 11px; color: #8B949E;">Baseline Historical Collection Trend:</span><br>
+                    <span style="font-size: 16px; font-weight: bold; color: {trend_color};">{trend_status}</span>
                 </div>
-                <div style="font-size: 12px; color: #C9D1D9; text-align: right;">
-                    {trend_desc}
+                <div style="font-size: 11px; color: #C9D1D9; text-align: right;">
+                    Monthly Avg: <b>PhP 1.93M</b><br>Cumulative: <b>PhP 57.80M</b>
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-        # Plotly Time Series with OLS Trendline
         fig_ts = go.Figure()
         fig_ts.add_trace(
             go.Scatter(
@@ -377,7 +438,7 @@ if nav_selection == "Dashboard Home":
                 mode="lines+markers",
                 name="Monthly Collection",
                 line=dict(color="#58A6FF", width=2),
-                marker=dict(size=5),
+                marker=dict(size=4),
             )
         )
         fig_ts.add_trace(
@@ -392,24 +453,93 @@ if nav_selection == "Dashboard Home":
 
         fig_ts.update_layout(
             template="plotly_dark",
-            height=230,
+            height=210,
             margin=dict(l=10, r=10, t=10, b=10),
-            xaxis_title=None,
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
             yaxis_title="PhP",
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         )
         st.plotly_chart(fig_ts, use_container_width=True)
 
-# --- 2. REVENUE ANALYTICS & FORECASTING VIEW ---
+# ==========================================
+# 2. MANPOWER & INFRASTRUCTURE JUSTIFICATION VIEW
+# ==========================================
+elif nav_selection == "Manpower & Infrastructure Justification":
+    st.title("👷 Technical Manpower & Foundational Infrastructure Framework")
+    st.markdown("Detailed resource analysis justifying the operational necessity for additional engineering and technical personnel to execute the **PFEZ Master Development Plan**.")
+
+    st.markdown(
+        """
+        <div class="callout-box">
+            <h4 style="margin: 0 0 6px 0; color: #58A6FF;">Core Strategic Rationale</h4>
+            <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.5;">
+                Foundational works—such as the <b>Wharf Extension, Land Reclamation, Container Yard, and BOSS Operations</b>—are capital-intensive infrastructure projects requiring dedicated oversight. Expanding BEZA's technical personnel ensures project delivery on schedule, maintains procurement compliance, and directly protects projected revenue growth.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### Technical Staffing Gap Analysis")
+        
+        staff_data = pd.DataFrame({
+            "Role Category": [
+                "Civil & Marine Engineers",
+                "GIS & Spatial Planners",
+                "Project Managers / Oversight",
+                "Procurement & Legal Specialists",
+                "Environmental & Safety Officers"
+            ],
+            "Current Staff": [2, 1, 2, 1, 1],
+            "Required Staff (Phase 1)": [8, 4, 6, 4, 3]
+        })
+        
+        fig_staff = go.Figure()
+        fig_staff.add_trace(go.Bar(y=staff_data["Role Category"], x=staff_data["Current Staff"], name="Current Capacity", orientation='h', marker_color='#30363D'))
+        fig_staff.add_trace(go.Bar(y=staff_data["Role Category"], x=staff_data["Required Staff (Phase 1)"], name="Required Workforce", orientation='h', marker_color='#58A6FF'))
+        
+        fig_staff.update_layout(
+            barmode='group',
+            template="plotly_dark",
+            height=340,
+            margin=dict(l=10, r=10, t=20, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        st.plotly_chart(fig_staff, use_container_width=True)
+
+    with col2:
+        st.markdown("### Risk Matrix: Impact of Staffing Deficit")
+        
+        risk_table = pd.DataFrame({
+            "Impact Domain": ["Procurement & Bidding", "Project Timelines", "Quality & Safety Compliance", "Revenue Realization"],
+            "Risk Level Without Staffing": ["CRITICAL", "HIGH", "HIGH", "HIGH"],
+            "Consequence": [
+                "Delays in Phase 1 PAP contract awards & funds utilization",
+                "Slippage in marine wharf extension and reclamation milestones",
+                "Sub-standard infrastructure execution and environmental risk",
+                "Deferred revenue collection from port operators and locators"
+            ]
+        })
+        st.dataframe(risk_table, use_container_width=True, height=340)
+
+# ==========================================
+# 3. REVENUE ANALYTICS & FORECASTING VIEW
+# ==========================================
 elif nav_selection == "Revenue Analytics & Forecasting":
-    st.title("📈 Revenue Collection Analytics & PAP Master Plan Forecasting")
+    st.title("📈 Revenue Collection Analytics & Master Plan Forecasting")
     st.markdown("Time series evaluation of monthly historical revenue collection (2024–2026) and long-term revenue forecasting under the **PFEZ Master Plan PAPs (2026–2040)**.")
 
     st.markdown("### 1. Historical Revenue Collection Time Series (2024–2026)")
     
     fig_hist = go.Figure()
-    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Traditional"], mode='lines+markers', name='Traditional Revenue'))
-    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Non_Traditional"], mode='lines+markers', name='Non-Traditional Revenue'))
+    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Traditional"], mode='lines+markers', name='Traditional Revenue', line=dict(color='#A371F7')))
+    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Non_Traditional"], mode='lines+markers', name='Non-Traditional Revenue', line=dict(color='#F0883E')))
     fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Collected_Revenue"], mode='lines+markers', name='Total Collected Revenue', line=dict(width=3, color='#58A6FF')))
     
     fig_hist.update_layout(
@@ -418,7 +548,9 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         xaxis_title="Timeline",
         yaxis_title="Revenue (PhP)",
         height=380,
-        margin=dict(l=10, r=10, t=40, b=10)
+        margin=dict(l=10, r=10, t=40, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
     )
     st.plotly_chart(fig_hist, use_container_width=True)
 
@@ -483,7 +615,9 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         xaxis_title="Year",
         yaxis_title="Annual Revenue (PhP Millions)",
         height=420,
-        margin=dict(l=10, r=10, t=40, b=10)
+        margin=dict(l=10, r=10, t=40, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
     )
     st.plotly_chart(fig_fore, use_container_width=True)
 
@@ -495,7 +629,9 @@ elif nav_selection == "Revenue Analytics & Forecasting":
     with c3:
         st.metric("Total Master Plan Value Add", f"PhP {(df_forecast['Master Plan Integrated Forecast (PhP M)'].sum() - df_forecast['Baseline Projection (PhP M)'].sum()):.2f} M", "2026-2040 Cumulative Uplift")
 
-# --- 3. INVESTMENT PHASING VIEW ---
+# ==========================================
+# 4. INVESTMENT PHASING VIEW
+# ==========================================
 elif nav_selection == "Investment Phasing":
     st.title("💰 Investment & Phasing Program (2026–2040)")
     st.markdown("Detailed breakdown of the **95 Programs and Projects (PAPs)** amounting to **PhP 5.3 Billion** across 4 distinct phases as outlined in the Phase 3 SDPIP Report.")
@@ -513,7 +649,9 @@ elif nav_selection == "Investment Phasing":
     st.markdown("---")
     st.dataframe(df_projects, use_container_width=True)
 
-# --- 4. SPATIAL MAP VIEWER & OPEN ZONE MAP ---
+# ==========================================
+# 5. SPATIAL MAP VIEWER & OPEN ZONE MAP
+# ==========================================
 elif nav_selection == "Spatial Map Viewer":
     st.title("🗺️ Spatial Development & Land Use Map Viewer")
     st.markdown("Interactive GIS viewer integrating local vector zoning layers and the **Open Zone Map** global economic zone repository.")
@@ -522,7 +660,6 @@ elif nav_selection == "Spatial Map Viewer":
 
     if map_type == "Global Open Zone Map (Embedded Iframe)":
         st.markdown("### Global Special Economic Zones (Open Zone Map)")
-        st.write("Displaying Open Zone Map interactive portal via iframe.")
         components.iframe(src="https://www.openzonemap.com/map", height=650, scrolling=True)
 
     else:
@@ -544,7 +681,7 @@ elif nav_selection == "Spatial Map Viewer":
                     legend_items = render_multi_layer_map(selected_layers, height=560)
                     
                 with legend_col:
-                    st.markdown("### 🗂️ Zoning Layers Legend")
+                    st.markdown("### 🗂️️ Zoning Layers Legend")
                     st.markdown("<p style='font-size: 12px; color: #8B949E;'>Active zones currently rendered:</p>", unsafe_allow_html=True)
                     
                     if legend_items:
@@ -565,7 +702,9 @@ elif nav_selection == "Spatial Map Viewer":
         else:
             st.warning("No `.geojson` files found in the repository. Please ensure QGIS vector exports are placed in the app directory.")
 
-# --- 5. M&E & RISK MATRIX VIEW ---
+# ==========================================
+# 6. M&E & RISK MATRIX VIEW
+# ==========================================
 elif nav_selection == "M&E & Risk Matrix":
     st.title("📊 Monitoring & Evaluation (M&E) & Risk Matrix")
     st.markdown("Tracking project risks, mitigation measures, and performance indicators across the PFEZ master development lifecycle.")
