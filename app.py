@@ -754,7 +754,8 @@ elif nav_selection == "Revenue Analytics & Forecasting":
     with col_param2:
         pap_multiplier = st.slider("PAPs Implementation Multiplier", min_value=1.0, max_value=2.5, value=1.4, step=0.1)
 
-    annual_2025_base = df_rev[df_rev["Date"].dt.year == 2025]["Collected_Revenue"].sum()
+    df_2025 = df_rev[df_rev["Date"].dt.year == 2025]
+    annual_2025_base = df_2025["Collected_Revenue"].sum() if not df_2025.empty else df_rev["Collected_Revenue"].mean() * 12
     years = list(range(2026, 2041))
     
     baseline_proj = []
