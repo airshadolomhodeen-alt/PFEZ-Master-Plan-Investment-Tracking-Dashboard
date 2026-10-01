@@ -107,7 +107,7 @@ def load_masterplan_data():
                 return 0.0
 
         df['Cost_PhP'] = df['ESTIMATE AMOUNT'].apply(parse_amount)
-        df['Cost_PhP_M'] = df['Cost_PhP'] / 1e6
+        df['Cost_PhP_B'] = df['Cost_PhP'] / 1e9
 
         # Phase Mapping Assignment
         def assign_phase(p_no):
@@ -132,7 +132,7 @@ def load_masterplan_data():
             "SECTOR": ["Infrastructure"] * 21 + ["Institutional"] * 24 + ["Economic"] * 25 + ["Social"] * 13 + ["Environmental"] * 12,
             "CATEGORY": ["Infrastructure Preparation"] * 95,
             "Cost_PhP": [89724294.0] * 95,
-            "Cost_PhP_M": [89.72] * 95,
+            "Cost_PhP_B": [0.0897] * 95,
             "Phase": phases
         })
 
@@ -196,7 +196,7 @@ st.markdown(
         <div>
             <span style="background-color: #238636; color: #FFFFFF; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 12px; letter-spacing: 0.5px;">EXECUTIVE STRATEGY BRIEF FOR EVALUATORS</span>
             <h2 style="color: #58A6FF; margin: 6px 0 2px 0; font-size: 22px; font-weight: 700;">POLLOC FREEPORT AND ECONOMIC ZONE (PFEZ)</h2>
-            <p style="color: #8B949E; margin: 0; font-size: 13px;">Master Development Plan Implementation & Technical Infrastructure Manpower Expansion Framework</p>
+            <p style="color: #8B949E; margin: 0; font-size: 13px;">Master Development Plan Implementation & Technical Infrastructure Manpower Framework</p>
         </div>
         <div style="text-align: right;">
             <span style="font-size: 11px; color: #8B949E;">Authority:</span><br>
@@ -225,7 +225,7 @@ nav_selection = st.sidebar.radio(
 
 st.sidebar.markdown("---")
 st.sidebar.info(
-    f"**Project Portfolio:** PFEZ Master Plan\n\n**Total PAPs:** {len(df_master)} Projects\n\n**Total Estimated Capital:** PhP {df_master['Cost_PhP_M'].sum()/1e3:.2f} Billion\n\n**Target Horizon:** 2026–2040 (4 Phases)"
+    f"**Project Portfolio:** PFEZ Master Plan\n\n**Total PAPs:** {len(df_master)} Projects\n\n**Total Estimated Capital:** PhP {df_master['Cost_PhP_B'].sum():.3f} Billion\n\n**Target Horizon:** 2026–2040 (4 Phases)"
 )
 
 # --- SIDEBAR AUTHOR BRANDING ---
@@ -244,7 +244,7 @@ st.sidebar.markdown(
     </div>
     <div style='font-size: 11px; color: #8B949E; margin-top: 4px; line-height: 1.3;'>
         📱 0975-256-9055 / 0929-336-7787<br>
-        ✉️ airsadolomodin@gmail.com
+        ✉️️ airsadolomodin@gmail.com
     </div>
     """,
     unsafe_allow_html=True,
@@ -334,7 +334,7 @@ if nav_selection == "Dashboard Home":
                 <div>
                     <h4 style="margin: 0 0 4px 0; color: #58A6FF; font-size: 15px;">STRATEGIC JUSTIFICATION FOR TECHNICAL ENGINEERING MANPOWER EXPANSION</h4>
                     <p style="margin: 0; color: #C9D1D9; font-size: 12px; line-height: 1.5;">
-                        The PFEZ Master Development Plan commits <b>PhP {df_master['Cost_PhP_M'].sum()/1e3:.2f} Billion</b> across <b>{len(df_master)} Programs and Projects (PAPs)</b> structured into <b>4 Implementation Phases (2026–2040)</b>. Executing <b>Phase 1 (39 Immediate PAPs)</b> requires technical reinforcement: <b>one Engineer V, one Engineer III, and two Engineer I positions</b>. Without direct engineering oversight, project execution delays threaten the foundational works and projected revenue trajectory.
+                        The PFEZ Master Development Plan commits <b>PhP {df_master['Cost_PhP_B'].sum():.3f} Billion</b> across <b>{len(df_master)} Programs and Projects (PAPs)</b> structured into <b>4 Implementation Phases (2026–2040)</b>. Executing <b>Phase 1 (39 Immediate PAPs)</b> requires technical reinforcement: <b>one Engineer V, one Engineer III, and two Engineer I positions</b>. Without direct engineering oversight, project execution delays threaten the foundational works and projected revenue trajectory.
                     </p>
                 </div>
             </div>
@@ -346,14 +346,14 @@ if nav_selection == "Dashboard Home":
     # --- KEY EXECUTIVE METRICS ---
     k1, k2, k3, k4 = st.columns(4)
     with k1:
-        st.metric(label="Total Capital Budget", value=f"PhP {df_master['Cost_PhP_M'].sum()/1e3:.2f} Billion", delta=f"{len(df_master)} Official PAPs Across 4 Phases")
+        st.metric(label="Total Capital Budget", value=f"PhP {df_master['Cost_PhP_B'].sum():.3f} Billion", delta=f"{len(df_master)} Official PAPs Across 4 Phases")
     with k2:
-        p1_cost = df_master[df_master['Phase'] == 'Phase 1 (2026–2030)']['Cost_PhP_M'].sum()
-        st.metric(label="Phase 1 Immediate Budget", value=f"PhP {p1_cost:.2f} Million", delta="39 Immediate Deliverables")
+        p1_cost_b = df_master[df_master['Phase'] == 'Phase 1 (2026–2030)']['Cost_PhP_B'].sum()
+        st.metric(label="Phase 1 Immediate Budget", value=f"PhP {p1_cost_b:.3f} Billion", delta="39 Immediate Deliverables")
     with k3:
         st.metric(label="Engineering Request", value="4 Positions", delta="Engineer V, III, and two I")
     with k4:
-        st.metric(label="Historical Revenue Baseline", value=f"PhP {df_rev['Collected_Revenue'].sum()/1e6:.2f} M", delta="2024–2026 Collection")
+        st.metric(label="Historical Revenue Baseline", value=f"PhP {df_rev['Collected_Revenue'].sum()/1e9:.3f} Billion", delta="2024–2026 Collection")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -362,7 +362,7 @@ if nav_selection == "Dashboard Home":
     
     phase_summary = df_master.groupby('Phase').agg(
         PAPs_Count=('PROJECT NO.', 'count'),
-        Total_Budget_M=('Cost_PhP_M', 'sum')
+        Total_Budget_B=('Cost_PhP_B', 'sum')
     ).reset_index()
 
     p_col1, p_col2, p_col3, p_col4 = st.columns(4)
@@ -373,7 +373,7 @@ if nav_selection == "Dashboard Home":
             f"""
             <div class="phase-card" style="border-top: 4px solid #58A6FF;">
                 <span style="background-color: #1F6FE5; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 1 (2026–2030)</span>
-                <h3 style="color: #58A6FF; margin: 8px 0 2px 0; font-size: 18px;">PhP {p1_m['Total_Budget_M'].values[0]:,.1f} M</h3>
+                <h3 style="color: #58A6FF; margin: 8px 0 2px 0; font-size: 18px;">PhP {p1_m['Total_Budget_B'].values[0]:,.3f} Billion</h3>
                 <p style="color: #8B949E; margin: 0; font-size: 11px;"><b>{p1_m['PAPs_Count'].values[0]} PAPs</b> | Institutional Setup, BOSS & Baselines</p>
             </div>
             """,
@@ -386,7 +386,7 @@ if nav_selection == "Dashboard Home":
             f"""
             <div class="phase-card" style="border-top: 4px solid #F0883E;">
                 <span style="background-color: #D25D11; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 2 (2029–2035)</span>
-                <h3 style="color: #F0883E; margin: 8px 0 2px 0; font-size: 18px;">PhP {p2_m['Total_Budget_M'].values[0]:,.1f} M</h3>
+                <h3 style="color: #F0883E; margin: 8px 0 2px 0; font-size: 18px;">PhP {p2_m['Total_Budget_B'].values[0]:,.3f} Billion</h3>
                 <p style="color: #8B949E; margin: 0; font-size: 11px;"><b>{p2_m['PAPs_Count'].values[0]} PAPs</b> | Container Yard & Halal Processing Hub</p>
             </div>
             """,
@@ -399,7 +399,7 @@ if nav_selection == "Dashboard Home":
             f"""
             <div class="phase-card" style="border-top: 4px solid #A371F7;">
                 <span style="background-color: #8957E5; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 3 (2032–2038)</span>
-                <h3 style="color: #A371F7; margin: 8px 0 2px 0; font-size: 18px;">PhP {p3_m['Total_Budget_M'].values[0]:,.1f} M</h3>
+                <h3 style="color: #A371F7; margin: 8px 0 2px 0; font-size: 18px;">PhP {p3_m['Total_Budget_B'].values[0]:,.3f} Billion</h3>
                 <p style="color: #8B949E; margin: 0; font-size: 11px;"><b>{p3_m['PAPs_Count'].values[0]} PAPs</b> | Wharf Extension & Land Reclamation</p>
             </div>
             """,
@@ -412,7 +412,7 @@ if nav_selection == "Dashboard Home":
             f"""
             <div class="phase-card" style="border-top: 4px solid #238636;">
                 <span style="background-color: #238636; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 4 (2035–2040)</span>
-                <h3 style="color: #2EA043; margin: 8px 0 2px 0; font-size: 18px;">PhP {p4_m['Total_Budget_M'].values[0]:,.1f} M</h3>
+                <h3 style="color: #2EA043; margin: 8px 0 2px 0; font-size: 18px;">PhP {p4_m['Total_Budget_B'].values[0]:,.3f} Billion</h3>
                 <p style="color: #8B949E; margin: 0; font-size: 11px;"><b>{p4_m['PAPs_Count'].values[0]} PAPs</b> | IT Park & Eco-Tourism Development</p>
             </div>
             """,
@@ -428,9 +428,9 @@ if nav_selection == "Dashboard Home":
         fig_phase = px.bar(
             phase_summary,
             x="Phase",
-            y="Total_Budget_M",
-            text_auto=".1f",
-            title="Capital Expenditure Allocation by Implementation Phase (PhP M)",
+            y="Total_Budget_B",
+            text_auto=".3f",
+            title="Capital Expenditure Allocation by Implementation Phase (PhP Billion)",
             template="plotly_dark",
             height=330,
             color="Phase",
@@ -440,16 +440,17 @@ if nav_selection == "Dashboard Home":
             margin=dict(l=10, r=10, t=40, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
+            yaxis_title="PhP Billion",
             showlegend=False
         )
         st.plotly_chart(fig_phase, use_container_width=True)
 
     with c_col2:
-        sector_agg = df_master.groupby('SECTOR')['Cost_PhP_M'].sum().reset_index()
+        sector_agg = df_master.groupby('SECTOR')['Cost_PhP_B'].sum().reset_index()
         fig_sec = px.pie(
             sector_agg,
             names="SECTOR",
-            values="Cost_PhP_M",
+            values="Cost_PhP_B",
             title="Capital Budget Distribution across Sectors",
             hole=0.45,
             template="plotly_dark",
@@ -504,7 +505,7 @@ if nav_selection == "Dashboard Home":
                     <span style="font-size: 16px; font-weight: bold; color: {trend_color};">{trend_status}</span>
                 </div>
                 <div style="font-size: 11px; color: #C9D1D9; text-align: right;">
-                    Monthly Avg: <b>PhP {df_rev['Collected_Revenue'].mean()/1e6:.2f}M</b><br>Cumulative: <b>PhP {df_rev['Collected_Revenue'].sum()/1e6:.2f}M</b>
+                    Monthly Avg: <b>PhP {df_rev['Collected_Revenue'].mean()/1e6:.2f} Million</b><br>Cumulative: <b>PhP {df_rev['Collected_Revenue'].sum()/1e9:.3f} Billion</b>
                 </div>
             </div>
             """,
@@ -548,17 +549,17 @@ if nav_selection == "Dashboard Home":
 # ==========================================
 elif nav_selection == "Investment Phasing (Phases 1–4)":
     st.title("💰 Investment & Phasing Program (2026–2040)")
-    st.markdown("Detailed evaluator breakdown of the **95 Programs and Projects (PAPs)** amounting to **PhP 8.52 Billion** across 4 implementation phases.")
+    st.markdown("Detailed evaluator breakdown of the **95 Programs and Projects (PAPs)** amounting to **PhP 8.524 Billion** across 4 implementation phases.")
     
     col_p1, col_p2, col_p3, col_p4 = st.columns(4)
     with col_p1:
-        st.metric("Phase 1 (2026–2030)", "PhP 283.7 M", "39 Initial PAPs")
+        st.metric("Phase 1 (2026–2030)", "PhP 0.284 Billion", "39 Initial PAPs")
     with col_p2:
-        st.metric("Phase 2 (2029–2035)", "PhP 1,948.7 M", "32 Core PAPs")
+        st.metric("Phase 2 (2029–2035)", "PhP 1.949 Billion", "32 Core PAPs")
     with col_p3:
-        st.metric("Phase 3 (2032–2038)", "PhP 6,123.8 M", "16 Major Capital PAPs")
+        st.metric("Phase 3 (2032–2038)", "PhP 6.124 Billion", "16 Major Capital PAPs")
     with col_p4:
-        st.metric("Phase 4 (2035–2040)", "PhP 167.6 M", "8 Finalizing PAPs")
+        st.metric("Phase 4 (2035–2040)", "PhP 0.168 Billion", "8 Finalizing PAPs")
         
     st.markdown("---")
     
@@ -569,7 +570,7 @@ elif nav_selection == "Investment Phasing (Phases 1–4)":
     else:
         df_phase_view = df_master[df_master['Phase'] == selected_phase]
 
-    st.markdown(f"**Displaying {len(df_phase_view)} PAPs | Total Budget: PhP {df_phase_view['Cost_PhP_M'].sum():,.2f} Million**")
+    st.markdown(f"**Displaying {len(df_phase_view)} PAPs | Total Budget: PhP {df_phase_view['Cost_PhP_B'].sum():,.3f} Billion**")
     st.dataframe(df_phase_view[["PROJECT NO.", "PROJECT TITLE", "SECTOR", "CATEGORY", "Phase", "ESTIMATE AMOUNT"]], use_container_width=True, height=450)
 
 # ==========================================
@@ -577,7 +578,7 @@ elif nav_selection == "Investment Phasing (Phases 1–4)":
 # ==========================================
 elif nav_selection == "Master Plan Projects Directory":
     st.title("📋 Master Plan Programs & Projects (PAPs) Directory")
-    st.markdown(f"Complete searchable database of **{len(df_master)} PAPs** totaling **PhP {df_master['Cost_PhP_M'].sum():,.2f} Million**.")
+    st.markdown(f"Complete searchable database of **{len(df_master)} PAPs** totaling **PhP {df_master['Cost_PhP_B'].sum():,.3f} Billion**.")
 
     col_filter1, col_filter2, col_filter3 = st.columns(3)
     with col_filter1:
@@ -593,7 +594,7 @@ elif nav_selection == "Master Plan Projects Directory":
         (df_master['CATEGORY'].isin(selected_cats))
     ]
 
-    st.markdown(f"**Showing {len(df_filtered)} of {len(df_master)} Projects | Subtotal: PhP {df_filtered['Cost_PhP_M'].sum():,.2f} Million**")
+    st.markdown(f"**Showing {len(df_filtered)} of {len(df_master)} Projects | Subtotal: PhP {df_filtered['Cost_PhP_B'].sum():,.3f} Billion**")
 
     st.dataframe(
         df_filtered[["PROJECT NO.", "PROJECT TITLE", "SECTOR", "CATEGORY", "Phase", "ESTIMATE AMOUNT"]],
@@ -723,19 +724,19 @@ elif nav_selection == "Revenue Analytics & Forecasting":
 
     df_forecast = pd.DataFrame({
         "Year": years,
-        "Baseline (PhP M)": [v / 1e6 for v in baseline_proj],
-        "Master Plan Integrated (PhP M)": [v / 1e6 for v in masterplan_proj]
+        "Baseline (PhP Billion)": [v / 1e9 for v in baseline_proj],
+        "Master Plan Integrated (PhP Billion)": [v / 1e9 for v in masterplan_proj]
     })
 
     fig_fore = go.Figure()
-    fig_fore.add_trace(go.Scatter(x=df_forecast["Year"], y=df_forecast["Baseline (PhP M)"], mode='lines+markers', name='Business-As-Usual', line=dict(dash='dash', color='#8B949E')))
-    fig_fore.add_trace(go.Scatter(x=df_forecast["Year"], y=df_forecast["Master Plan Integrated (PhP M)"], mode='lines+markers', name='Master Plan Integrated Revenue', line=dict(width=3, color='#238636')))
+    fig_fore.add_trace(go.Scatter(x=df_forecast["Year"], y=df_forecast["Baseline (PhP Billion)"], mode='lines+markers', name='Business-As-Usual', line=dict(dash='dash', color='#8B949E')))
+    fig_fore.add_trace(go.Scatter(x=df_forecast["Year"], y=df_forecast["Master Plan Integrated (PhP Billion)"], mode='lines+markers', name='Master Plan Integrated Revenue', line=dict(width=3, color='#238636')))
 
     fig_fore.update_layout(
         template="plotly_dark",
-        title="Projected Annual Revenue Trajectory (PhP Millions)",
+        title="Projected Annual Revenue Trajectory (PhP Billion)",
         xaxis_title="Year",
-        yaxis_title="Annual Revenue (PhP Millions)",
+        yaxis_title="Annual Revenue (PhP Billion)",
         height=400,
         margin=dict(l=10, r=10, t=40, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
@@ -803,7 +804,7 @@ elif nav_selection == "M&E & Risk Matrix":
     
     risk_summary = df_master.groupby('Phase').agg(
         Total_Projects=('PROJECT NO.', 'count'),
-        Total_Cost_M=('Cost_PhP_M', 'sum')
+        Total_Cost_B=('Cost_PhP_B', 'sum')
     ).reset_index()
 
     risk_summary['Risk Rating'] = ['Low Risk', 'Medium Risk', 'High Risk', 'Low Risk']
