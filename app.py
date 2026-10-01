@@ -164,7 +164,7 @@ def load_revenue_data():
 
 
 def prepare_clean_time_series(df):
-    """Filters header texts and extracts clean numerical values for charts."""
+    """Filters out headers and non-data months (e.g. July 2026 - Dec 2026 without data)."""
     clean_records = []
     month_col = df.columns[0]
 
@@ -185,6 +185,15 @@ def prepare_clean_time_series(df):
         month_val = str(row[month_col]).strip()
         raw_rev = row[target_col]
 
+        # Filter out rows with no actual revenue entries (NaN, Empty, 0, or dashes)
+        if pd.isna(raw_rev) or str(raw_rev).strip().lower() in [
+            "",
+            "nan",
+            "none",
+            "-",
+        ]:
+            continue
+
         rev_str = (
             str(raw_rev)
             .replace("PhP", "")
@@ -195,7 +204,7 @@ def prepare_clean_time_series(df):
 
         try:
             val = float(rev_str)
-            if month_val.upper() not in [
+            if val > 0 and month_val.upper() not in [
                 "MONTH",
                 "NONE",
                 "NAN",
@@ -607,7 +616,6 @@ if nav_selection == "Dashboard Home":
         else:
             st.info("No numerical revenue data available to render trendline.")
 
-        # --- ADD VALUE TAB DIRECTLY BELOW REVENUE TIME SERIES ---
         with st.expander("➕ Add Value / New Entry", expanded=True):
             with st.form("add_revenue_form", clear_on_submit=True):
                 c1, c2 = st.columns(2)
@@ -845,62 +853,249 @@ elif nav_selection == "Manpower Justification":
 # ==========================================
 elif nav_selection == "Revenue Analytics & Forecasting":
     st.title("📈 Revenue Collection Analytics & Master Plan Forecasting")
+    st.markdown(
+        "Comprehensive revenue breakdown across **Traditional Port Revenues**, **Non-Traditional Economic Revenues**, and **Integrated Master Plan Projections**."
+    )
 
-    st.markdown("### 1. Historical Revenue Collections & Trend Analysis")
+    # --- TABS RESTORED ---
+    rev_tab1, rev_tab2, rev_tab3, rev_tab4 = st.tabs([
+        "📊 Historical Revenue Analytics",
+        "⚓ Traditional Revenue Streams",
+        "🏢 Non-Traditional Revenue Streams",
+        "🚀 Integrated Master Plan Forecast",
+    ])
 
-    clean_ts_df = prepare_clean_time_series(df_rev)
+    # TAB 1: HISTORICAL REVENUE ANALYTICS
+    with rev_tab1:
+        st.markdown("### 1. Historical Revenue Collections & Trend Analysis")
 
-    if not clean_ts_df.empty:
-        fig_hist = px.line(
-            clean_ts_df,
-            x="Month",
-            y="Revenue",
-            title="Monthly Revenue Collections with Linear OLS Trendline (PhP)",
-            markers=True,
-        )
+        clean_ts_df = prepare_clean_time_series(df_rev)
 
-        y_vals = clean_ts_df["Revenue"].values
-        x_vals = np.arange(len(y_vals))
-
-        if len(y_vals) > 1:
-            m, c = np.polyfit(x_vals, y_vals, 1)
-            trendline_y = m * x_vals + c
-
-            fig_hist.add_trace(
-                go.Scatter(
-                    x=clean_ts_df["Month"],
-                    y=trendline_y,
-                    mode="lines",
-                    name="Linear Trendline",
-                    line=dict(color="#FF4B4B", width=2, dash="dash"),
-                )
+        if not clean_ts_df.empty:
+            fig_hist = px.line(
+                clean_ts_df,
+                x="Month",
+                y="Revenue",
+                title="Monthly Revenue Collections with Linear OLS Trendline (PhP)",
+                markers=True,
             )
 
-        fig_hist.update_traces(
-            selector=dict(mode="lines+markers"),
-            line_color="#58A6FF",
-            marker=dict(size=7, color="#58A6FF"),
+            y_vals = clean_ts_df["Revenue"].values
+            x_vals = np.arange(len(y_vals))
+
+            if len(y_vals) > 1:
+                m, c = np.polyfit(x_vals, y_vals, 1)
+                trendline_y = m * x_vals + c
+
+                fig_hist.add_trace(
+                    go.Scatter(
+                        x=clean_ts_df["Month"],
+                        y=trendline_y,
+                        mode="lines",
+                        name="Linear Trendline",
+                        line=dict(color="#FF4B4B", width=2, dash="dash"),
+                    )
+                )
+
+            fig_hist.update_traces(
+                selector=dict(mode="lines+markers"),
+                line_color="#58A6FF",
+                marker=dict(size=7, color="#58A6FF"),
+            )
+            fig_hist.update_layout(
+                template="plotly_dark",
+                height=400,
+                margin=dict(l=10, r=10, t=40, b=10),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                xaxis_title="Month",
+                yaxis_title="Revenue (PhP)",
+                xaxis=dict(tickangle=-45, type="category"),
+                yaxis=dict(gridcolor="#30363D"),
+            )
+            st.plotly_chart(fig_hist, use_container_width=True)
+        else:
+            st.info("No numerical revenue records found in Excel dataset.")
+
+        st.markdown("### Raw Excel Revenue Dataset")
+        st.dataframe(df_rev, use_container_width=True, height=250)
+
+    # TAB 2: TRADITIONAL REVENUE STREAMS
+    with rev_tab2:
+        st.markdown(
+            "### ⚓ Traditional Port & Maritime Revenue Streams (Core Port Services)"
         )
-        fig_hist.update_layout(
+        st.markdown(
+            "Traditional revenue generated directly from vessel operations, cargo handling, and port tariff collections."
+        )
+
+        trad_col1, trad_col2 = st.columns(2)
+
+        with trad_col1:
+            trad_df = pd.DataFrame({
+                "Revenue Category": [
+                    "Wharfage Dues",
+                    "Dockage & Berthing Fees",
+                    "Port Dues & Harbor Fees",
+                    "Cargo Handling / Arrastre & Stevedoring Share",
+                    "Storage & Demurrage Fees",
+                ],
+                "Annual Estimate (PhP)": [
+                    15000000.0,
+                    12000000.0,
+                    8000000.0,
+                    25000000.0,
+                    6000000.0,
+                ],
+            })
+
+            fig_trad = px.bar(
+                trad_df,
+                x="Annual Estimate (PhP)",
+                y="Revenue Category",
+                orientation="h",
+                title="Traditional Port Revenue Streams",
+                template="plotly_dark",
+                color="Annual Estimate (PhP)",
+                color_continuous_scale="Blues",
+            )
+            fig_trad.update_layout(
+                height=350,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+            )
+            st.plotly_chart(fig_trad, use_container_width=True)
+
+        with trad_col2:
+            st.markdown("#### Strategic Details - Traditional Revenues")
+            st.dataframe(trad_df, use_container_width=True, height=350)
+
+    # TAB 3: NON-TRADITIONAL REVENUE STREAMS
+    with rev_tab3:
+        st.markdown(
+            "### 🏢 Non-Traditional Economic Zone & Commercial Revenue Streams"
+        )
+        st.markdown(
+            "Diversified income generated from land leases, commercial permits, processing fees, and utility surcharges."
+        )
+
+        nontrad_col1, nontrad_col2 = st.columns(2)
+
+        with nontrad_col1:
+            nontrad_df = pd.DataFrame({
+                "Revenue Category": [
+                    "Industrial Land Lease & Ground Rent",
+                    "Ecozone Enterprise Registration Fees",
+                    "Commercial Building Leases",
+                    "Utility & Infrastructure Surcharges",
+                    "Permits, Licenses & Environmental Fees",
+                ],
+                "Annual Estimate (PhP)": [
+                    35000000.0,
+                    10000000.0,
+                    18000000.0,
+                    12000000.0,
+                    7000000.0,
+                ],
+            })
+
+            fig_nontrad = px.bar(
+                nontrad_df,
+                x="Annual Estimate (PhP)",
+                y="Revenue Category",
+                orientation="h",
+                title="Non-Traditional Revenue Streams",
+                template="plotly_dark",
+                color="Annual Estimate (PhP)",
+                color_continuous_scale="Oranges",
+            )
+            fig_nontrad.update_layout(
+                height=350,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+            )
+            st.plotly_chart(fig_nontrad, use_container_width=True)
+
+        with nontrad_col2:
+            st.markdown("#### Strategic Details - Non-Traditional Revenues")
+            st.dataframe(nontrad_df, use_container_width=True, height=350)
+
+    # TAB 4: INTEGRATED MASTER PLAN FORECAST
+    with rev_tab4:
+        st.markdown(
+            "### 🚀 Integrated Master Plan Revenue Forecast (2026–2040)"
+        )
+        st.markdown(
+            "Long-term projected revenues post-completion of Phase 1 through Phase 4 master plan capital projects."
+        )
+
+        forecast_years = [
+            "2026 (Phase 1 Start)",
+            "2028",
+            "2030 (Phase 1 End)",
+            "2033 (Phase 2)",
+            "2036 (Phase 3)",
+            "2040 (Phase 4 Target)",
+        ]
+        trad_forecast = [66.0, 85.0, 120.0, 180.0, 260.0, 380.0]  # Million PhP
+        nontrad_forecast = [
+            82.0,
+            110.0,
+            160.0,
+            250.0,
+            410.0,
+            620.0,
+        ]  # Million PhP
+
+        forecast_df = pd.DataFrame({
+            "Year/Phase": forecast_years,
+            "Traditional Revenue (M PhP)": trad_forecast,
+            "Non-Traditional Revenue (M PhP)": nontrad_forecast,
+        })
+        forecast_df["Total Master Plan Revenue (M PhP)"] = (
+            forecast_df["Traditional Revenue (M PhP)"]
+            + forecast_df["Non-Traditional Revenue (M PhP)"]
+        )
+
+        fig_forecast = go.Figure()
+        fig_forecast.add_trace(
+            go.Bar(
+                x=forecast_df["Year/Phase"],
+                y=forecast_df["Traditional Revenue (M PhP)"],
+                name="Traditional Port Revenues",
+                marker_color="#58A6FF",
+            )
+        )
+        fig_forecast.add_trace(
+            go.Bar(
+                x=forecast_df["Year/Phase"],
+                y=forecast_df["Non-Traditional Revenue (M PhP)"],
+                name="Non-Traditional Ecozone Revenues",
+                marker_color="#F0883E",
+            )
+        )
+
+        fig_forecast.update_layout(
+            barmode="stack",
+            title="Integrated Revenue Growth Forecast (Millions PhP)",
             template="plotly_dark",
             height=400,
-            margin=dict(l=10, r=10, t=40, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            xaxis_title="Month",
-            yaxis_title="Revenue (PhP)",
-            xaxis=dict(tickangle=-45, type="category"),
-            yaxis=dict(gridcolor="#30363D"),
+            xaxis_title="Timeline / Phase Horizon",
+            yaxis_title="Revenue (Million PhP)",
         )
-        st.plotly_chart(fig_hist, use_container_width=True)
-    else:
-        st.info("No numerical revenue records found in Excel dataset.")
+
+        st.plotly_chart(fig_forecast, use_container_width=True)
+
+        st.markdown("#### Forecast Summary Table")
+        st.dataframe(forecast_df, use_container_width=True)
 
 # ==========================================
 # 6. SPATIAL MAP VIEWER & OPEN ZONE MAP
 # ==========================================
 elif nav_selection == "Spatial Map Viewer":
-    st.title("🗺️ Spatial Development & Land Use Map Viewer")
+    st.title("🗺 Spatial Development & Land Use Map Viewer")
 
     map_type = st.radio(
         "Select View Mode:",
