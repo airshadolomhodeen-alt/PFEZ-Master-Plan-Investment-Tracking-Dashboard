@@ -164,11 +164,11 @@ def load_revenue_data():
 
 
 def prepare_clean_time_series(df):
-    """Filters out headers and non-data months (e.g. July 2026 - Dec 2026 without data)."""
+    """Retains all 2024-2026 historical entries while dropping empty/zero rows."""
     clean_records = []
     month_col = df.columns[0]
-
     target_col = None
+
     for col in df.columns:
         col_str = str(col).upper()
         if any(
@@ -185,7 +185,6 @@ def prepare_clean_time_series(df):
         month_val = str(row[month_col]).strip()
         raw_rev = row[target_col]
 
-        # Filter out rows with no actual revenue entries (NaN, Empty, 0, or dashes)
         if pd.isna(raw_rev) or str(raw_rev).strip().lower() in [
             "",
             "nan",
@@ -204,11 +203,12 @@ def prepare_clean_time_series(df):
 
         try:
             val = float(rev_str)
-            if val > 0 and month_val.upper() not in [
+            if month_val.upper() not in [
                 "MONTH",
                 "NONE",
                 "NAN",
                 "COLLECTED REVENUE",
+                "MONTH/YEAR",
             ]:
                 clean_records.append({"Month": month_val, "Revenue": val})
         except ValueError:
@@ -857,7 +857,6 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         "Comprehensive revenue breakdown across **Traditional Port Revenues**, **Non-Traditional Economic Revenues**, and **Integrated Master Plan Projections**."
     )
 
-    # --- TABS RESTORED ---
     rev_tab1, rev_tab2, rev_tab3, rev_tab4 = st.tabs([
         "📊 Historical Revenue Analytics",
         "⚓ Traditional Revenue Streams",
@@ -900,18 +899,29 @@ elif nav_selection == "Revenue Analytics & Forecasting":
             fig_hist.update_traces(
                 selector=dict(mode="lines+markers"),
                 line_color="#58A6FF",
-                marker=dict(size=7, color="#58A6FF"),
+                marker=dict(size=6, color="#58A6FF"),
             )
             fig_hist.update_layout(
                 template="plotly_dark",
-                height=400,
+                height=420,
                 margin=dict(l=10, r=10, t=40, b=10),
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 xaxis_title="Month",
                 yaxis_title="Revenue (PhP)",
-                xaxis=dict(tickangle=-45, type="category"),
+                xaxis=dict(
+                    tickangle=-45,
+                    tickfont=dict(size=9),
+                    type="category",
+                ),
                 yaxis=dict(gridcolor="#30363D"),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1,
+                ),
             )
             st.plotly_chart(fig_hist, use_container_width=True)
         else:
@@ -1148,3 +1158,7 @@ elif nav_selection == "M&E & Risk Matrix":
         "Low Risk",
     ]
     st.dataframe(risk_summary, use_container_width=True, height=300)
+```<FollowUp>
+Would you like any additional adjustments to the chart formatting, axis labels, or legend placements?
+</FollowUp><ElicitationsGroup>
+</ElicitationsGroup>
