@@ -106,7 +106,7 @@ def load_masterplan_data():
             s = s.replace(",", "").strip()
             try:
                 return float(s)
-            except:
+            except Exception:
                 return 0.0
 
         df["Cost_PhP"] = df["ESTIMATE AMOUNT"].apply(parse_amount)
@@ -157,7 +157,6 @@ def load_revenue_data():
         except Exception:
             pass
 
-    # Create baseline default dataframe if file missing/empty
     df_default = pd.DataFrame({
         "Month": [
             "Jan 2026",
@@ -546,16 +545,15 @@ if nav_selection == "Dashboard Home":
 
     st.markdown("---")
 
-    # --- ADD, EDIT, AND DELETE DATA BELOW CHART ---
     st.subheader("⚙️ Manage Historical Revenue Data")
     st.caption(
-        "Directly edit cells in the table below, click **'+'** at the bottom to add new months (e.g., Aug 2026, Sep 2026), "
+        "Directly edit cells in the table below, click **'+'** at the bottom to add new months, "
         "or select rows and press **Delete** on your keyboard. Click **Save Excel Changes** when done."
     )
 
     edited_df = st.data_editor(
         df_rev,
-        num_rows="dynamic",  # Enables row addition (+) and deletion
+        num_rows="dynamic",
         use_container_width=True,
         column_config={
             "Month": st.column_config.TextColumn(
@@ -577,7 +575,7 @@ if nav_selection == "Dashboard Home":
         try:
             edited_df.to_excel(EXCEL_FILE, index=False)
             st.success("`REVENUE.xlsx` updated successfully!")
-            st.rerun()  # Instantly updates chart above
+            st.rerun()
         except Exception as err:
             st.error(f"Failed to save changes: {err}")
 
@@ -858,12 +856,3 @@ elif nav_selection == "M&E & Risk Matrix":
         "Low Risk",
     ]
     st.dataframe(risk_summary, use_container_width=True, height=300)
-```<FollowUp>
-<a href="javascript:void(0)" class="followup-suggestion">How can I connect this editor directly to PostgreSQL or Google Sheets instead of Excel?</a>
-<a href="javascript:void(0)" class="followup-suggestion">Can we add user login/authentication so only admins can modify the revenue data?</a>
-</FollowUp>
-
-<ElicitationsGroup>
-<a href="javascript:void(0)" class="elicitation-choice">Show me how to save edits to Google Sheets instead of local Excel</a>
-<a href="javascript:void(0)" class="elicitation-choice">Show me how to add password protection before editing data</a>
-</ElicitationsGroup>
