@@ -163,7 +163,7 @@ def load_project_data():
 def load_revenue_data():
     file_path = "REVENUE.xlsx"
     if os.path.exists(file_path):
-        df_raw = pd.read_excel(file_path, sheet_name=0)
+        df_raw = pd.read_excel(file_path, sheet_name=0, engine="openpyxl")
         clean_rows = []
         for idx in range(2, 32):
             row = df_raw.iloc[idx]
@@ -327,15 +327,78 @@ if nav_selection == "Dashboard Home":
                 key="home_zone",
             )
             try:
-                render_multi_layer_map([selected_home_zone], height=260)
+                render_multi_layer_map([selected_home_zone], height=310)
             except Exception as e:
                 st.error(f"Error reading layer: {e}")
         else:
             st.warning("No geojson files found in directory.")
 
     with bot_col2:
-        st.markdown("### Summary Investment Program Table")
-        st.dataframe(df_projects[["Project Name", "Phase", "Cost_PhP_M", "Status"]], height=260, use_container_width=True)
+        st.markdown("### Historical Revenue Time Series & Trend Analysis")
+        
+        # Calculate Trend Line (Linear Regression)
+        x_numeric = np.arange(len(df_rev))
+        y_vals = df_rev["Collected_Revenue"].values
+        slope, intercept = np.polyfit(x_numeric, y_vals, 1)
+        trend_line = slope * x_numeric + intercept
+        
+        # Trend Status Determination
+        if slope > 0:
+            trend_status = "📈 UPTREND"
+            trend_color = "#238636"
+            trend_desc = f"Revenue is growing by an average of <b>+PhP {slope/1e3:.2f}k</b> per month."
+        else:
+            trend_status = "📉 DOWNTREND"
+            trend_color = "#DA3633"
+            trend_desc = f"Revenue collection is declining by <b>-PhP {abs(slope)/1e3:.2f}k</b> per month."
+
+        # Trend Status Banner
+        st.markdown(
+            f"""
+            <div style="background-color: #161B22; border: 1px solid #30363D; padding: 10px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span style="font-size: 13px; color: #8B949E;">Overall Collection Trend:</span><br>
+                    <span style="font-size: 18px; font-weight: bold; color: {trend_color};">{trend_status}</span>
+                </div>
+                <div style="font-size: 12px; color: #C9D1D9; text-align: right;">
+                    {trend_desc}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Plotly Time Series with OLS Trendline
+        fig_ts = go.Figure()
+        fig_ts.add_trace(
+            go.Scatter(
+                x=df_rev["Date"],
+                y=df_rev["Collected_Revenue"],
+                mode="lines+markers",
+                name="Monthly Collection",
+                line=dict(color="#58A6FF", width=2),
+                marker=dict(size=5),
+            )
+        )
+        fig_ts.add_trace(
+            go.Scatter(
+                x=df_rev["Date"],
+                y=trend_line,
+                mode="lines",
+                name="Trendline (OLS)",
+                line=dict(color=trend_color, width=2, dash="dash"),
+            )
+        )
+
+        fig_ts.update_layout(
+            template="plotly_dark",
+            height=230,
+            margin=dict(l=10, r=10, t=10, b=10),
+            xaxis_title=None,
+            yaxis_title="PhP",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        )
+        st.plotly_chart(fig_ts, use_container_width=True)
 
 # --- 2. REVENUE ANALYTICS & FORECASTING VIEW ---
 elif nav_selection == "Revenue Analytics & Forecasting":
@@ -380,11 +443,6 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         b_val = annual_2025_base * ((1 + (base_annual_growth / 100)) ** n)
         baseline_proj.append(b_val)
         
-        # Phase Multipliers driven by PAP deployment:
-        # Phase 1: BOSS & Baseline (2026-2030)
-        # Phase 2: Container Yard & Halal Hub (2029-2035)
-        # Phase 3: Seawall & Reclamation (2032-2038)
-        # Phase 4: IT Park & Eco-Tourism (2035-2040)
         if y <= 2028:
             phase_multiplier = 1.20
         elif y <= 2031:
