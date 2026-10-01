@@ -688,120 +688,56 @@ elif nav_selection == "Manpower Justification":
 # ==========================================
 # MODULE 5: REVENUE ANALYTICS VIEW
 # ==========================================
-def render_revenue_forecast_chart(
-    df: pd.DataFrame,
-    year_col: str = "year",
-    bau_col: str = "bau_revenue",
-    masterplan_col: str = "integrated_revenue",
-    unit_scale: float = 1e6,
-    milestones: dict | None = None
-) -> go.Figure | None:
-    """
-    Renders Component 3: Integrated Revenue Forecast Model (2026–2040).
-    Scale: Inputs scaled by unit_scale. Adjust unit_scale if source is stored in Billions (1e-3) vs Pesos (1e6).
-    """
-    df_plot, err = validate_dataframe(df, [year_col, bau_col, masterplan_col])
-    if err:
-        st.warning(f"Revenue forecast visualization unavailable: {err}")
-        return None
+if selected_module == "Revenue Analytics & Forecasting":
+    st.header("📈 Revenue Analytics & Forecasting")
+    st.write("Executive financial tracking, stream decomposition, and strategic long-term forecast models.")
+    
+    df_hist = load_historical_data()
+    df_forecast = load_forecast_data()
 
-    try:
-        df_plot[year_col] = pd.to_numeric(df_plot[year_col], errors="coerce")
-        df_plot[bau_col] = pd.to_numeric(df_plot[bau_col], errors="coerce")
-        df_plot[masterplan_col] = pd.to_numeric(df_plot[masterplan_col], errors="coerce")
-        df_plot = df_plot.dropna(subset=[year_col, bau_col, masterplan_col]).sort_values(by=year_col)
+    # 1. Historical Revenue Chart
+    fig1 = render_historical_revenue_chart(
+        df=df_hist,
+        date_col="observation_date",
+        revenue_col="total_revenue",
+        monthly_target=2500000.0,
+        unit_scale=1e6
+    )
+    if fig1:
+        st.plotly_chart(fig1, use_container_width=True, config=get_executive_config())
 
-        if df_plot.empty:
-            st.warning("Revenue forecast visualization unavailable: invalid numerical forecast data.")
-            return None
+    st.markdown("---")
 
-        # Convert values to PhP Millions
-        bau_scaled = df_plot[bau_col] * (1e6 / unit_scale) if unit_scale != 1e6 else df_plot[bau_col] / 1e6
-        mp_scaled = df_plot[masterplan_col] * (1e6 / unit_scale) if unit_scale != 1e6 else df_plot[masterplan_col] / 1e6
-        years = df_plot[year_col].astype(int)
-        gap_scaled = mp_scaled - bau_scaled
+    # 2. Revenue Breakdown Chart
+    fig2 = render_revenue_breakdown_chart(
+        df=df_hist,
+        date_col="observation_date",
+        trad_col="traditional_rev",
+        nontrad_col="nontraditional_rev",
+        unit_scale=1e6
+    )
+    if fig2:
+        st.plotly_chart(fig2, use_container_width=True, config=get_executive_config())
 
-        fig = go.Figure()
+    st.markdown("---")
 
-        # Shaded Value / Incremental Revenue Gap
-        fig.add_trace(go.Scatter(
-            x=pd.concat([years, years[::-1]]),
-            y=pd.concat([mp_scaled, bau_scaled[::-1]]),
-            fill="toself",
-            fillcolor=EXECUTIVE_COLORS["gap_fill"],
-            line=dict(color="rgba(255,255,255,0)"),
-            hoverinfo="skip",
-            name="Incremental Revenue Potential"
-        ))
-
-        # Business-As-Usual (BAU) Trace
-        fig.add_trace(go.Scatter(
-            x=years,
-            y=bau_scaled,
-            mode="lines",
-            name="Business-As-Usual (BAU)",
-            line=dict(color=EXECUTIVE_COLORS["bau"], width=2, dash="dash"),
-            customdata=gap_scaled,
-            hovertemplate=(
-                "<b>Year %{x}</b><br>"
-                "BAU Revenue: PhP %{y:.2f}M<br>"
-                "Incremental Gap: PhP %{customdata:.2f}M<extra></extra>"
-            )
-        ))
-
-        # Master Plan Integrated Revenue Trace
-        fig.add_trace(go.Scatter(
-            x=years,
-            y=mp_scaled,
-            mode="lines+markers",
-            name="Master Plan Integrated Revenue",
-            line=dict(color=EXECUTIVE_COLORS["masterplan"], width=2.8),
-            marker=dict(size=6, color=EXECUTIVE_COLORS["masterplan"]),
-            customdata=gap_scaled,
-            hovertemplate=(
-                "<b>Year %{x}</b><br>"
-                "Master Plan Revenue: <b>PhP %{y:.2f}M</b><br>"
-                "Incremental Gap: <b>+PhP %{customdata:.2f}M</b><extra></extra>"
-            )
-        ))
-
-        # Executive Milestone Annotations (Only if defined and present in data)
-        if milestones:
-            for yr, text in milestones.items():
-                if yr in years.values:
-                    y_val = mp_scaled[years == yr].values[0]
-                    fig.add_annotation(
-                        x=yr,
-                        y=y_val,
-                        text=f"<b>{text}</b>",
-                        showarrow=True,
-                        arrowhead=2,
-                        arrowsize=1,
-                        arrowwidth=1.5,
-                        arrowcolor=EXECUTIVE_COLORS["masterplan"],
-                        ax=0,
-                        ay=-35,
-                        font=dict(size=10, color=EXECUTIVE_COLORS["text"]),
-                        bgcolor="rgba(15, 20, 29, 0.85)",
-                        bordercolor=EXECUTIVE_COLORS["masterplan"],
-                        borderwidth=1,
-                        borderpad=4
-                    )
-
-        apply_executive_theme(
-            fig,
-            title="Long-Term Integrated Revenue Forecast (2026–2040)",
-            subtitle="Strategic comparison between Business-As-Usual baseline and Master Plan execution"
-        )
-
-        fig.update_yaxes(title_text="Annual Revenue (PhP Millions)", tickprefix="PhP ", ticksuffix="M")
-        fig.update_xaxes(title_text="Forecast Year", dtick=2)
-
-        return fig
-
-    except Exception as e:
-        st.warning(f"Revenue forecast visualization unavailable: internal processing error ({str(e)}).")
-        return None
+    # 3. Forecast Chart
+    milestones = {
+        2028: "Phase I PAPs Online",
+        2032: "Phase II Port Expansion",
+        2036: "Full Logistics Integration"
+    }
+    
+    fig3 = render_revenue_forecast_chart(
+        df=df_forecast,
+        year_col="fiscal_year",
+        bau_col="bau_projection",
+        masterplan_col="master_plan_val",
+        unit_scale=1e6,
+        milestones=milestones
+    )
+    if fig3:
+        st.plotly_chart(fig3, use_container_width=True, config=get_executive_config())
 
 # ==========================================
 # MODULE 6: SPATIAL MAP VIEWER
