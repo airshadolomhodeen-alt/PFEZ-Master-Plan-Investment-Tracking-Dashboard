@@ -114,7 +114,7 @@ def apply_executive_theme(fig, title_text="", subtitle_text="", height=480):
         plot_bgcolor=EXECUTIVE_THEME["plot_bgcolor"],
         font=dict(family=EXECUTIVE_THEME["font_family"], color="#F0F6FC", size=12),
         title=dict(text=full_title, font=dict(size=18), x=0.0, xanchor="left"),
-        margin=dict(l=60, r=200, t=80, b=50),  # Expanded right margin for right-side legends
+        margin=dict(l=60, r=200, t=80, b=50),
         xaxis=dict(
             showgrid=True,
             gridcolor=EXECUTIVE_THEME["grid_color"],
@@ -823,8 +823,8 @@ if nav_selection == "Dashboard Home":
             f"""
             <div class="phase-card" style="border-top: 4px solid #238636;">
                 <span style="background-color: #238636; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 4 (2035–2040)</span>
-                <h3 style="color: #2EA043; margin: 8px 0 2px 0; font-size: 18px;">PhP {val_b:,.3f} Billion</h3>
-                <p style="color: #8B949E; margin: 0; font-size: 11px;"><b>{val_c} PAPs</b> | IT Park & Eco-Tourism Development</p>
+                <h3 style="color: #238636; margin: 8px 0 2px 0; font-size: 18px;">PhP {val_b:,.3f} Billion</h3>
+                <p style="color: #8B949E; margin: 0; font-size: 11px;"><b>{val_c} PAPs</b> | Smart Logistics & Full Ecozone Maturity</p>
             </div>
             """,
             unsafe_allow_html=True
@@ -832,145 +832,270 @@ if nav_selection == "Dashboard Home":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    c_col1, c_col2 = st.columns(2)
-    
-    with c_col1:
+    c_left, c_right = st.columns(2)
+
+    with c_left:
         fig_phase = px.bar(
             phase_summary,
             x="Phase",
             y="Total_Budget_B",
-            text_auto=".3f",
-            title="Capital Expenditure Allocation by Implementation Phase (PhP Billion)",
-            template="plotly_dark",
-            height=330,
+            text="Total_Budget_B",
+            labels={"Total_Budget_B": "Capital Budget (PhP Billions)", "Phase": "Implementation Phase"},
             color="Phase",
             color_discrete_sequence=["#58A6FF", "#F0883E", "#A371F7", "#238636"]
         )
-        apply_executive_theme(fig_phase, title_text="Capital Allocation by Implementation Phase", height=350)
-        fig_phase.update_yaxes(title_text="Budget (PhP Billions)", tickprefix="PhP ", ticksuffix="B")
+        fig_phase.update_traces(texttemplate="PhP %{text:.2f}B", textposition="outside")
+        apply_executive_theme(
+            fig_phase,
+            title_text="Capital Allocation by Implementation Phase",
+            subtitle_text="Distribution of estimated project budgets across investment horizons",
+            height=380
+        )
         st.plotly_chart(fig_phase, use_container_width=True, config=configure_modebar())
 
-    with c_col2:
+    with c_right:
         sector_summary = df_master.groupby('SECTOR')['Cost_PhP_B'].sum().reset_index()
         fig_sector = px.pie(
             sector_summary,
-            values="Cost_PhP_B",
             names="SECTOR",
-            title="Master Plan Capital Allocation by Sector",
+            values="Cost_PhP_B",
             hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Pastel
+            color_discrete_sequence=["#38BDF8", "#10B981", "#F59E0B", "#A855F7", "#F97316"]
         )
-        apply_executive_theme(fig_sector, title_text="Sectoral Investment Mix", height=350)
+        apply_executive_theme(
+            fig_sector,
+            title_text="Investment Breakdown by Key Sector",
+            subtitle_text="Sectoral percentage share of overall master plan budget",
+            height=380
+        )
         st.plotly_chart(fig_sector, use_container_width=True, config=configure_modebar())
 
 # ------------------------------------------
-# MODULE 2: INVESTMENT PHASING
+# MODULE 2: INVESTMENT PHASING (PHASES 1–4)
 # ------------------------------------------
 elif nav_selection == "Investment Phasing (Phases 1–4)":
-    st.title("⏳ Investment Phasing (Phases 1–4)")
-    st.caption("Detailed investment schedule breakdown across key project horizons (2026–2040).")
+    st.markdown("## 📅 Capital Investment Phasing Framework (2026–2040)")
+    st.markdown("Explore project portfolios and investment allocations distributed across implementation phases.")
 
-    phase_df = df_master.groupby(['Phase', 'SECTOR']).agg({'Cost_PhP_B': 'sum', 'PROJECT NO.': 'count'}).reset_index()
-    fig_phasing = px.bar(
-        phase_df,
-        x="Phase",
+    selected_phase = st.selectbox(
+        "Filter by Implementation Phase:",
+        ["All Phases"] + list(df_master['Phase'].unique())
+    )
+
+    df_filtered = df_master.copy()
+    if selected_phase != "All Phases":
+        df_filtered = df_filtered[df_filtered['Phase'] == selected_phase]
+
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        st.metric("Phase Portfolio Budget", f"PhP {df_filtered['Cost_PhP_B'].sum():.3f} Billion")
+    with m2:
+        st.metric("Total Active PAPs", f"{len(df_filtered)} Projects")
+    with m3:
+        st.metric("Primary Sector Share", df_filtered['SECTOR'].mode()[0] if not df_filtered.empty else "N/A")
+
+    st.markdown("---")
+    
+    fig_bar = px.bar(
+        df_filtered,
+        x="PROJECT NO.",
         y="Cost_PhP_B",
         color="SECTOR",
-        title="Investment Allocation across Phases by Sector",
-        barmode="stack"
+        hover_data=["PROJECT TITLE", "CATEGORY", "Phase"],
+        labels={"Cost_PhP_B": "Cost (PhP Billions)", "PROJECT NO.": "Project Number"},
+        color_discrete_sequence=["#38BDF8", "#10B981", "#F59E0B", "#A855F7", "#F97316"]
     )
-    apply_executive_theme(fig_phasing, title_text="Multi-Phase Investment Distribution", height=450)
-    fig_phasing.update_yaxes(title_text="PhP Billions", tickprefix="PhP ", ticksuffix="B")
-    st.plotly_chart(fig_phasing, use_container_width=True, config=configure_modebar())
+    apply_executive_theme(
+        fig_bar,
+        title_text="Project-Level Capital Distribution",
+        subtitle_text="Individual project budgets categorized by sector",
+        height=420
+    )
+    st.plotly_chart(fig_bar, use_container_width=True, config=configure_modebar())
+
+    st.markdown("### Selected Phase Projects List")
+    st.dataframe(
+        df_filtered[["PROJECT NO.", "PROJECT TITLE", "SECTOR", "CATEGORY", "Cost_PhP_B", "Phase", "PCM Stage"]],
+        use_container_width=True,
+        hide_index=True
+    )
 
 # ------------------------------------------
 # MODULE 3: MASTER PLAN PROJECTS DIRECTORY
 # ------------------------------------------
 elif nav_selection == "Master Plan Projects Directory":
-    st.title("📂 Master Plan Projects Directory")
-    st.caption("Complete inventory of programs and projects under the PFEZ Master Plan.")
+    st.markdown("## 📋 Comprehensive Master Plan Projects Directory")
+    st.markdown("Filter, search, and audit all 95 Programs and Projects (PAPs) under the PFEZ Master Plan.")
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        sector_filter = st.multiselect("Filter by Sector:", options=df_master['SECTOR'].unique(), default=df_master['SECTOR'].unique())
+    with c2:
+        phase_filter = st.multiselect("Filter by Phase:", options=df_master['Phase'].unique(), default=df_master['Phase'].unique())
+    with c3:
+        search_kw = st.text_input("Search Project Title:", "")
+
+    df_dir = df_master[
+        (df_master['SECTOR'].isin(sector_filter)) &
+        (df_master['Phase'].isin(phase_filter))
+    ]
+
+    if search_kw:
+        df_dir = df_dir[df_dir['PROJECT TITLE'].str.contains(search_kw, case=False, na=False)]
+
+    st.markdown(f"**Showing {len(df_dir)} out of {len(df_master)} Projects** | Total Filtered Capital: **PhP {df_dir['Cost_PhP_B'].sum():.3f} Billion**")
 
     st.dataframe(
-        df_master[["PROJECT NO.", "PROJECT TITLE", "SECTOR", "CATEGORY", "Phase", "Cost_PhP_B"]],
-        use_container_width=True
+        df_dir[["PROJECT NO.", "PROJECT TITLE", "SECTOR", "CATEGORY", "ESTIMATE AMOUNT", "Cost_PhP_B", "Phase", "PCM Stage"]],
+        use_container_width=True,
+        hide_index=True
     )
 
 # ------------------------------------------
 # MODULE 4: MANPOWER JUSTIFICATION
 # ------------------------------------------
 elif nav_selection == "Manpower Justification":
-    st.title("👷 Technical Engineering Manpower Expansion Plan")
-    st.caption("Organizational justification for key engineering roles in execution of Phase 1 PAPs.")
+    st.markdown("## 👷 Technical Engineering Manpower Expansion Justification")
+    st.markdown("Strategic rationale for expanding the BEZA Technical Infrastructure Division to oversee Phase 1 master plan deliverables.")
 
-    st.markdown("""
-    ### Requested Technical Engineering Positions
-    - **Engineer V (SG-24):** Chief Engineering & Infrastructure Oversight Officer
-    - **Engineer III (SG-19):** Senior Project Planning & Contract Administrator
-    - **Engineer I (SG-12) x2:** Site Supervision & Technical Quality Assurance Officers
-    """)
+    st.markdown(
+        """
+        <div class="callout-box">
+            <h4 style="margin: 0 0 8px 0; color: #58A6FF;">PROPOSED TECHNICAL PERSONNEL EXPANSION</h4>
+            <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.6;">
+                To guarantee sound engineering management, strict structural compliance, and timely project delivery across <b>PhP 3.518 Billion</b> in Phase 1 projects, BEZA urgently requires four (4) core technical positions:
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(
+            """
+            ### Required Technical Staffing
+            1. **Engineer V (Division Head / Lead Engineer)**
+               - *Role:* Strategic engineering management, master plan alignment, inter-agency coordination.
+            2. **Engineer III (Senior Project Manager)**
+               - *Role:* Procurement specification, contract management, structural quality assurance.
+            3. **Engineer I (Field Inspection & Monitoring - 2 Positions)**
+               - *Role:* On-site supervision, quantity surveying, contractor compliance verification.
+            """
+        )
+
+    with col2:
+        st.markdown(
+            """
+            ### Operational Risk Without Reinforcement
+            - ⚠️ **Execution Bottlenecks:** Delayed review of detailed engineering designs (DED).
+            - ⚠️ **Quality Assurance Deficits:** Inadequate field inspection leading to sub-standard works.
+            - ⚠️ **Fiscal Slippage:** Risk of cost overruns and unbilled implementation delays.
+            - ⚠️ **Revenue Lag:** Deferred completion directly postpones tenant leasing revenues.
+            """
+        )
 
 # ------------------------------------------
 # MODULE 5: REVENUE ANALYTICS & FORECASTING
 # ------------------------------------------
 elif nav_selection == "Revenue Analytics & Forecasting":
-    st.title("📈 Revenue Collection Analytics & Master Plan Forecasting")
-    st.caption("Historical revenue analysis (2024–2026) and long-term financial modeling under the PFEZ Master Plan PAPs (2026–2040).")
+    st.markdown("## 📈 Revenue Analytics & Long-Term Financial Forecasting")
+    st.markdown("Historical collections analysis and long-term revenue projections under Master Plan implementation.")
 
-    st.subheader("💡 Revenue Stream Definitions & Classification")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.info("""
-        **⚓ Traditional Revenue**  
-        *Core Maritime & Vessel Operations*  
-        Generated directly from Domestic and Foreign Vessels ship calls. Includes port dues, berthing/dockage fees, cargo wharfage, pilotage, and vessel tonnage fees. Highly dependent on shipping schedules and global trade cycles.
-        """)
-    with col2:
-        st.warning("""
-        **🏢 Non-Traditional Revenue**  
-        *Ecozone Real Estate, Logistics & Value-Added Services*  
-        Derived from commercial land assets and ecozone facilities. Includes Lease of Contracts, Space Rentals, Container Yard Terminals, and other commercial operations. Provides predictable, contractual long-term income.
-        """)
-
-    st.markdown("---")
-    
-    # Render Component 1
+    st.markdown("### 1. Historical Revenue & Momentum Analysis")
     render_component_1_historical_revenue(df_rev)
-    
+
     st.markdown("---")
-    
-    # Render Component 2
+    st.markdown("### 2. Historical Revenue Stream Composition")
     render_component_2_revenue_breakdown(df_rev)
 
     st.markdown("---")
-
-    # Render Component 3
+    st.markdown("### 3. Projected Long-Term Revenue Trajectory (2026–2040)")
     render_component_3_integrated_forecast(df_forecast)
 
 # ------------------------------------------
-# MODULE 6: SPATIAL MAP VIEWER
+# MODULE 6: SPATIAL MAP VIEWER & OPENZONEMAP
 # ------------------------------------------
 elif nav_selection == "Spatial Map Viewer":
-    st.title("🗺️ Spatial Map Viewer")
-    st.caption("GIS layers for PFEZ land utilization, zone classification, and site development master plans.")
+    st.markdown("## 🗺️ Spatial Map Viewer & Global SEZs")
+    st.markdown("Interactive GIS map visualization for local PFEZ layers and the Global OpenZoneMap.")
 
-    geojson_files = [f for f in os.listdir(".") if f.endswith(".geojson")]
-    if geojson_files:
-        selected = st.multiselect("Select GeoJSON spatial layers to display:", geojson_files, default=geojson_files[:2])
-        render_multi_layer_map(selected, height=500)
+    # Toggle switch between OpenZoneMap iframe and local GeoJSON layer viewer
+    map_mode = st.radio(
+        "Select Map Source:",
+        ["Global OpenZoneMap (Live Web Map)", "Local PFEZ GeoJSON Layers"],
+        horizontal=True
+    )
+
+    if map_mode == "Global OpenZoneMap (Live Web Map)":
+        st.markdown("### 🌐 Global Open Zone Map Integration")
+        st.write("Displaying the Open Zone Map inside Streamlit.")
+        components.iframe(
+            src="https://www.openzonemap.com/map",
+            height=700,
+            scrolling=True
+        )
     else:
-        st.info("No `.geojson` files found in root directory for rendering map layers.")
+        st.markdown("### 🗺️ Local PFEZ Spatial Map & Zone Layout")
+        available_layers = [f for f in os.listdir(".") if f.endswith(".geojson")]
+        
+        if available_layers:
+            selected_layers = st.multiselect("Select Spatial Layers to Display:", options=available_layers, default=available_layers[:1])
+            if selected_layers:
+                legend = render_multi_layer_map(selected_layers, height=500)
+                if legend:
+                    st.markdown("#### Layer Legend")
+                    leg_cols = st.columns(min(len(legend), 4))
+                    for idx, (lname, color_css) in enumerate(legend):
+                        with leg_cols[idx % 4]:
+                            st.markdown(
+                                f"<div style='display:flex; align-items:center; gap:8px;'><div style='width:16px; height:16px; background-color:{color_css}; border-radius:3px;'></div><span style='font-size:12px;'>{lname}</span></div>",
+                                unsafe_allow_html=True
+                            )
+            else:
+                st.info("Please select at least one layer to view the spatial map.")
+        else:
+            st.warning("No `.geojson` map layers found in the current root directory. Base spatial viewer loaded.")
+            m = folium.Map(location=[7.34, 124.28], zoom_start=14, tiles="https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", attr="Esri")
+            st_folium(m, width="100%", height=450)
 
 # ------------------------------------------
 # MODULE 7: M&E & RISK MATRIX
 # ------------------------------------------
 elif nav_selection == "M&E & Risk Matrix":
-    st.title("⚠️ M&E & Risk Governance Matrix")
-    st.caption("Monitoring framework and key implementation risk mitigations for PFEZ.")
+    st.markdown("## 🛡️ Monitoring & Evaluation (M&E) & Risk Mitigation Framework")
+    st.markdown("Project Cycle Management (PCM) stage gates, logical framework, and institutional risk matrix.")
 
-    risk_data = pd.DataFrame([
-        {"Risk Item": "Delay in Phase 1 Procurement", "Severity": "High", "Mitigation": "Deploy dedicated Engineer V and III for procurement prep."},
-        {"Risk Item": "Revenue Collection Shortfall", "Severity": "Medium", "Mitigation": "Expand Non-Traditional ecozone lease commercial agreements."},
-        {"Risk Item": "Environmental & Right of Way (ROW) Bottlenecks", "Severity": "High", "Mitigation": "Establish joint inter-agency Taskforce with Local Government Units."}
-    ])
-    st.table(risk_data)
+    tab1, tab2 = st.tabs(["PCM Stage Gate Framework", "Institutional Risk Matrix"])
+
+    with tab1:
+        st.markdown("### Project Cycle Management (PCM) Distribution")
+        pcm_counts = df_master['PCM Stage'].value_counts().reset_index()
+        pcm_counts.columns = ['PCM Stage', 'Count']
+        
+        fig_pcm = px.bar(
+            pcm_counts,
+            x="PCM Stage",
+            y="Count",
+            color="PCM Stage",
+            color_discrete_sequence=["#38BDF8", "#10B981", "#F59E0B", "#A855F7"]
+        )
+        apply_executive_theme(
+            fig_pcm,
+            title_text="PAPs by Project Cycle Management Stage",
+            subtitle_text="Current distribution across stage gates",
+            height=380
+        )
+        st.plotly_chart(fig_pcm, use_container_width=True, config=configure_modebar())
+
+    with tab2:
+        st.markdown("### Institutional Risk Mitigation Matrix")
+        risk_data = pd.DataFrame([
+            {"Risk Category": "Technical / Engineering", "Identified Risk": "Delay in detailed engineering designs (DED) and contractor procurement", "Severity": "High", "Mitigation Strategy": "Recruit dedicated technical staff (Engineer V & III) to fast-track terms of reference and review processes."},
+            {"Risk Category": "Financial / Fiscal", "Identified Risk": "Budgetary constraints and delays in capital disbursements", "Severity": "Medium", "Mitigation Strategy": "Establish phased capital allocation aligned with revenue milestones and explore PPP options."},
+            {"Risk Category": "Operational / Logistics", "Identified Risk": "Port congestion and insufficient container storage during early phases", "Severity": "Medium", "Mitigation Strategy": "Prioritize Phase 1 container yard expansion and off-dock logistics facilities."},
+            {"Risk Category": "Institutional / Legal", "Identified Risk": "Jurisdictional overlaps and slow regulatory permitting", "Severity": "High", "Mitigation Strategy": "Operationalize Business Permits and Licensing System (BPLS) and One-Stop Shop (BOSS) under BEZA."}
+        ])
+        
+        st.dataframe(risk_data, use_container_width=True, hide_index=True)
