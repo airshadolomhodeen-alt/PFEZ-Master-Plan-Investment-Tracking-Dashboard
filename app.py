@@ -149,61 +149,64 @@ def load_masterplan_data():
         })
 
 
-# --- LOAD/INITIALIZE REVENUE DATA FROM REVENUE.xlsx ---
+# --- LOAD REVENUE DATA PRESERVING EXACT STRUCTURE (TLS, BTO, ETC.) ---
 def load_revenue_data():
-    df = None
     if os.path.exists(EXCEL_FILE):
         try:
-            df = pd.read_excel(EXCEL_FILE)
+            # Read exact structure without column stripping/renaming
+            return pd.read_excel(EXCEL_FILE)
         except Exception:
             pass
 
-    if df is None or df.empty:
-        df = pd.DataFrame({
-            "Month": [
-                "Jan 2026",
-                "Feb 2026",
-                "Mar 2026",
-                "Apr 2026",
-                "May 2026",
-                "Jun 2026",
-                "Jul 2026",
-            ],
-            "Revenue": [
-                1500000.0,
-                1800000.0,
-                2100000.0,
-                1900000.0,
-                2300000.0,
-                2500000.0,
-                2800000.0,
-            ],
-        })
-        try:
-            df.to_excel(EXCEL_FILE, index=False)
-        except Exception:
-            pass
+    return pd.DataFrame({
+        "Month": [
+            "Jan 2026",
+            "Feb 2026",
+            "Mar 2026",
+            "Apr 2026",
+            "May 2026",
+            "Jun 2026",
+            "Jul 2026",
+        ],
+        "Revenue": [
+            1500000.0,
+            1800000.0,
+            2100000.0,
+            1900000.0,
+            2300000.0,
+            2500000.0,
+            2800000.0,
+        ],
+    })
 
-    # Clean & normalize column names
-    df.columns = [str(c).strip() for c in df.columns]
-    
-    # Rename case-insensitive matches to standard names
-    col_map = {}
-    for c in df.columns:
-        if c.lower() == "month":
-            col_map[c] = "Month"
-        elif c.lower() in ["revenue", "amount", "collections", "collection"]:
-            col_map[c] = "Revenue"
-    df = df.rename(columns=col_map)
 
-    # Fallback missing column checks
-    if "Month" not in df.columns:
-        df["Month"] = [f"Period {i+1}" for i in range(len(df))]
-    if "Revenue" not in df.columns:
-        df["Revenue"] = 0.0
+def get_total_revenue_value(df):
+    """Dynamically calculates total revenue from the sheet without modifying
 
-    df["Revenue"] = pd.to_numeric(df["Revenue"], errors="coerce").fillna(0.0)
-    return df
+    or dropping any columns (TLS, BTO, etc.).
+    """
+    if "Revenue" in df.columns:
+        return pd.to_numeric(df["Revenue"], errors="coerce").sum()
+
+    for col in df.columns:
+        col_str = str(col).upper()
+        if any(
+            k in col_str
+            for k in ["COLLECTED REVENUE", "REVENUE", "TOTAL REVENUE", "TLS"]
+        ):
+            return pd.to_numeric(df[col], errors="coerce").sum()
+
+    # Search within dataframe values if multi-level header exists
+    for col in df.columns:
+        if df[col].astype(str).str.upper().str.contains("COLLECTED").any():
+            return pd.to_numeric(df[col], errors="coerce").sum()
+
+    numeric_df = df.apply(pd.to_numeric, errors="coerce")
+    valid_cols = numeric_df.dropna(how="all", axis=1)
+    if not valid_cols.empty:
+        return valid_cols.iloc[:, -1].sum()
+
+    return 0.0
 
 
 df_master = load_masterplan_data()
@@ -393,9 +396,10 @@ if nav_selection == "Dashboard Home":
             delta="Engineer V, III, and two I",
         )
     with k4:
+        total_rev_val = get_total_revenue_value(df_rev)
         st.metric(
             label="Historical Revenue Baseline",
-            value=f"PhP {df_rev['Revenue'].sum()/1e9:.3f} Billion",
+            value=f"PhP {total_rev_val/1e9:.3f} Billion",
             delta="Collection Total",
         )
 
@@ -547,10 +551,16 @@ if nav_selection == "Dashboard Home":
     with bot_col2:
         st.markdown("### Historical Revenue Time Series & Trend Analysis")
 
+        # Safely extract line chart data without altering df_rev
+        time_col = df_rev.columns[0]
+        val_col = (
+            df_rev.columns[-1] if len(df_rev.columns) > 1 else df_rev.columns[0]
+        )
+
         fig_ts = px.line(
             df_rev,
-            x="Month",
-            y="Revenue",
+            x=time_col,
+            y=val_col,
             title="Monthly Collection vs Trendline",
             markers=True,
         )
@@ -572,7 +582,7 @@ if nav_selection == "Dashboard Home":
 
     st.subheader("⚙️ Manage Historical Revenue Data")
     st.caption(
-        "Directly edit cells in the table below, click **'+'** at the bottom to add new months, "
+        "Directly edit cells in the table below, click **'+'** at the bottom to add new entries, "
         "or select rows and press **Delete** on your keyboard. Click **Save Excel Changes** when done."
     )
 
@@ -580,19 +590,6 @@ if nav_selection == "Dashboard Home":
         df_rev,
         num_rows="dynamic",
         use_container_width=True,
-        column_config={
-            "Month": st.column_config.TextColumn(
-                "Month / Year",
-                help="e.g., Aug 2026",
-                required=True,
-            ),
-            "Revenue": st.column_config.NumberColumn(
-                "Revenue (PhP)",
-                format="PhP %'d",
-                min_value=0,
-                required=True,
-            ),
-        },
         key="revenue_excel_editor",
     )
 
@@ -691,7 +688,7 @@ elif nav_selection == "Master Plan Projects Directory":
     df_filtered = df_master[
         (df_master["Phase"].isin(selected_phases))
         & (df_master["SECTOR"].isin(selected_sectors))
-        & (df_filtered_cats := df_master["CATEGORY"].isin(selected_cats))
+        & (df_master["CATEGORY"].isin(selected_cats))
     ]
 
     st.markdown(
@@ -808,10 +805,13 @@ elif nav_selection == "Revenue Analytics & Forecasting":
     st.title("📈 Revenue Collection Analytics & Master Plan Forecasting")
 
     st.markdown("### 1. Revenue Collection Overview")
+    time_col = df_rev.columns[0]
+    val_col = df_rev.columns[-1] if len(df_rev.columns) > 1 else df_rev.columns[0]
+
     fig_hist = px.line(
         df_rev,
-        x="Month",
-        y="Revenue",
+        x=time_col,
+        y=val_col,
         title="Monthly Revenue Collections (PhP)",
         markers=True,
     )
