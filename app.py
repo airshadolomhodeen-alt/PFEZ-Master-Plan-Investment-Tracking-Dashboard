@@ -59,15 +59,6 @@ st.markdown(
             margin-bottom: 20px;
         }
 
-        /* Section Container Styling */
-        .panel-card {
-            background-color: #161B22;
-            border: 1px solid #30363D;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-
         /* Mobile Screen Responsiveness */
         @media (max-width: 768px) {
             .block-container { padding-left: 0.5rem; padding-right: 0.5rem; }
@@ -315,7 +306,7 @@ if nav_selection == "Dashboard Home":
                 <div>
                     <h4 style="margin: 0 0 4px 0; color: #58A6FF; font-size: 15px;">STRATEGIC JUSTIFICATION FOR TECHNICAL MANPOWER EXPANSION</h4>
                     <p style="margin: 0; color: #C9D1D9; font-size: 12px; line-height: 1.5;">
-                        The PFEZ Master Development Plan commits <b>PhP 5.3 Billion</b> across 95 Programs and Projects (PAPs). Executing <b>Phase 1 (39 Initial PAPs / PhP 264.4M)</b> requires immediate augmentation of civil engineers, port urban planners, GIS specialists, and procurement officers. Without expanded technical workforce capacity, project execution delays threaten the projected revenue trajectory.
+                        The PFEZ Master Development Plan commits <b>PhP 5.3 Billion</b> across 95 Programs and Projects (PAPs). Executing <b>Phase 1 (39 Initial PAPs / PhP 264.4M)</b> requires immediate augmentation of key engineering positions: <b>one Engineer V, one Engineer III, and two Engineer I positions</b>. Without this critical technical capacity, project execution delays threaten the foundational works and projected revenue trajectory.
                     </p>
                 </div>
             </div>
@@ -331,7 +322,7 @@ if nav_selection == "Dashboard Home":
     with kpi2:
         st.metric(label="Phase 1 Foundation Budget", value="PhP 264.4 Million", delta="39 Immediate Deliverables")
     with kpi3:
-        st.metric(label="Technical Staff Capacity Ratio", value="35% Capacity", delta="-65% Staffing Deficit", delta_color="inverse")
+        st.metric(label="Engineering Position Request", value="4 Engineering Positions", delta="Engineer V, III, and two I")
     with kpi4:
         st.metric(label="Historical Revenue Collection", value=f"PhP {df_rev['Collected_Revenue'].sum()/1e6:.2f} M", delta="2024–2026 Baseline")
 
@@ -466,15 +457,15 @@ if nav_selection == "Dashboard Home":
 # 2. MANPOWER & INFRASTRUCTURE JUSTIFICATION VIEW
 # ==========================================
 elif nav_selection == "Manpower & Infrastructure Justification":
-    st.title("👷 Technical Manpower & Foundational Infrastructure Framework")
-    st.markdown("Detailed resource analysis justifying the operational necessity for additional engineering and technical personnel to execute the **PFEZ Master Development Plan**.")
+    st.title("👷 Technical Engineering Manpower Justification")
+    st.markdown("Detailed resource analysis justifying the operational necessity for **Engineer V, Engineer III, and two Engineer I** positions to execute the **PFEZ Master Development Plan**.")
 
     st.markdown(
         """
         <div class="callout-box">
-            <h4 style="margin: 0 0 6px 0; color: #58A6FF;">Core Strategic Rationale</h4>
+            <h4 style="margin: 0 0 6px 0; color: #58A6FF;">Core Engineering Rationale</h4>
             <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.5;">
-                Foundational works—such as the <b>Wharf Extension, Land Reclamation, Container Yard, and BOSS Operations</b>—are capital-intensive infrastructure projects requiring dedicated oversight. Expanding BEZA's technical personnel ensures project delivery on schedule, maintains procurement compliance, and directly protects projected revenue growth.
+                Foundational works—such as the <b>Wharf Extension, Land Reclamation, Container Yard Expansion, and BOSS Infrastructure</b>—are complex, highly technical engineering projects. Establishing an active engineering unit composed of an <b>Engineer V (Division Chief/Lead), Engineer III (Senior Technical Lead), and two Engineer I (Project Supervision & Field Engineers)</b> guarantees quality compliance, timely execution, and risk mitigation across all 39 Phase 1 PAPs.
             </p>
         </div>
         """,
@@ -484,46 +475,50 @@ elif nav_selection == "Manpower & Infrastructure Justification":
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("### Technical Staffing Gap Analysis")
+        st.markdown("### Specific Engineering Position Requirements")
         
         staff_data = pd.DataFrame({
-            "Role Category": [
-                "Civil & Marine Engineers",
-                "GIS & Spatial Planners",
-                "Project Managers / Oversight",
-                "Procurement & Legal Specialists",
-                "Environmental & Safety Officers"
+            "Engineering Position": [
+                "Engineer V (Division Head / Strategic Lead)",
+                "Engineer III (Senior Project / Technical Lead)",
+                "Engineer I - Position A (Field & Construction Supervision)",
+                "Engineer I - Position B (Spatial Data & QA/QC Engineer)"
             ],
-            "Current Staff": [2, 1, 2, 1, 1],
-            "Required Staff (Phase 1)": [8, 4, 6, 4, 3]
+            "Requested Positions": [1, 1, 1, 1]
         })
         
         fig_staff = go.Figure()
-        fig_staff.add_trace(go.Bar(y=staff_data["Role Category"], x=staff_data["Current Staff"], name="Current Capacity", orientation='h', marker_color='#30363D'))
-        fig_staff.add_trace(go.Bar(y=staff_data["Role Category"], x=staff_data["Required Staff (Phase 1)"], name="Required Workforce", orientation='h', marker_color='#58A6FF'))
+        fig_staff.add_trace(go.Bar(
+            y=staff_data["Engineering Position"], 
+            x=staff_data["Requested Positions"], 
+            name="Requested Personnel", 
+            orientation='h', 
+            marker_color='#58A6FF',
+            text=staff_data["Requested Positions"],
+            textposition='auto'
+        ))
         
         fig_staff.update_layout(
-            barmode='group',
             template="plotly_dark",
             height=340,
             margin=dict(l=10, r=10, t=20, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
+            xaxis=dict(dtick=1, range=[0, 2]),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         st.plotly_chart(fig_staff, use_container_width=True)
 
     with col2:
-        st.markdown("### Risk Matrix: Impact of Staffing Deficit")
+        st.markdown("### Role Allocation & Responsibilities")
         
         risk_table = pd.DataFrame({
-            "Impact Domain": ["Procurement & Bidding", "Project Timelines", "Quality & Safety Compliance", "Revenue Realization"],
-            "Risk Level Without Staffing": ["CRITICAL", "HIGH", "HIGH", "HIGH"],
-            "Consequence": [
-                "Delays in Phase 1 PAP contract awards & funds utilization",
-                "Slippage in marine wharf extension and reclamation milestones",
-                "Sub-standard infrastructure execution and environmental risk",
-                "Deferred revenue collection from port operators and locators"
+            "Position": ["Engineer V", "Engineer III", "Engineer I (Field)", "Engineer I (QA/QC & GIS)"],
+            "Primary Functional Mandate": [
+                "Strategic infrastructure leadership, division management, & inter-agency coordination",
+                "Detailed engineering design review, contract monitoring, & procurement compliance",
+                "On-site monitoring, project inspection, & civil works quality verification",
+                "Geospatial layer integration, structural QA/QC documentation, & monitoring report generation"
             ]
         })
         st.dataframe(risk_table, use_container_width=True, height=340)
@@ -681,7 +676,7 @@ elif nav_selection == "Spatial Map Viewer":
                     legend_items = render_multi_layer_map(selected_layers, height=560)
                     
                 with legend_col:
-                    st.markdown("### 🗂️️ Zoning Layers Legend")
+                    st.markdown("### 🗂 Zoning Layers Legend")
                     st.markdown("<p style='font-size: 12px; color: #8B949E;'>Active zones currently rendered:</p>", unsafe_allow_html=True)
                     
                     if legend_items:
