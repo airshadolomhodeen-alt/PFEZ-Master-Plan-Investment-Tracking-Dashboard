@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import colorsys
 import numpy as np
 import pandas as pd
@@ -13,7 +14,7 @@ import streamlit.components.v1 as components
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="PFEZ Master Plan & Technical Capacity Dashboard",
+    page_title="PFEZ Master Development Plan & Capacity Dashboard",
     page_icon="⚓",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -69,115 +70,46 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- TOP EXECUTIVE BANNER ---
-st.markdown(
-    """
-    <div style="background-color: #161B22; padding: 18px 24px; border-radius: 8px; border: 1px solid #30363D; text-align: left; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <div>
-            <span style="background-color: #238636; color: #FFFFFF; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 12px; letter-spacing: 0.5px;">EXECUTIVE STRATEGY BRIEF</span>
-            <h2 style="color: #58A6FF; margin: 6px 0 2px 0; font-size: 22px; font-weight: 700;">POLLOC FREEPORT AND ECONOMIC ZONE (PFEZ)</h2>
-            <p style="color: #8B949E; margin: 0; font-size: 13px;">Master Development Plan Implementation & Infrastructure Manpower Expansion Framework</p>
-        </div>
-        <div style="text-align: right;">
-            <span style="font-size: 11px; color: #8B949E;">Authority:</span><br>
-            <span style="font-size: 12px; color: #C9D1D9; font-weight: 600;">Bangsamoro Economic Zone Authority (BEZA)</span>
-        </div>
-    </div>
-""",
-    unsafe_allow_html=True,
-)
-
-# --- SIDEBAR NAVIGATION ---
-st.sidebar.image("https://img.icons8.com/color/96/port.png", width=45)
-st.sidebar.title("PFEZ Navigation")
-nav_selection = st.sidebar.radio(
-    "Select Module",
-    [
-        "Dashboard Home",
-        "Manpower & Infrastructure Justification",
-        "Revenue Analytics & Forecasting",
-        "Investment Phasing",
-        "Spatial Map Viewer",
-        "M&E & Risk Matrix",
-    ],
-)
-
-st.sidebar.markdown("---")
-st.sidebar.info(
-    "**Project:** PFEZ Master Plan\n\n**Planning Horizon:** 2026–2040\n\n**Total Capital Budget:** PhP 5.3 Billion\n\n**Phase 1 Deliverables:** 39 PAPs"
-)
-
-# --- SIDEBAR AUTHOR BRANDING ---
-st.sidebar.markdown("---")
-st.sidebar.markdown("### Project Lead & Author")
-
-try:
-    st.sidebar.image("AirSad.png", width=120)
-except Exception:
-    st.sidebar.image("https://img.icons8.com/fluency/96/user-male-circle.png", width=75)
-
-st.sidebar.markdown(
-    """
-    <div style='font-size: 11px; color: #FFFFFF; font-weight: bold; margin-top: 8px;'>
-        ENGR. AIRSAD R. OLOMODIN, MBA, CBE
-    </div>
-    <div style='font-size: 11px; color: #8B949E; margin-top: 4px; line-height: 1.3;'>
-        📱 0975-256-9055 / 0929-336-7787<br>
-        ✉️ airsadolomodin@gmail.com
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown(
-    """
-    <div style='font-size: 10px; color: #8B949E; line-height: 1.3;'>
-    <b>Disclaimer:</b> Strategic decision-support tool built for BEZA infrastructure resource allocation and workforce expansion evaluation.
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# --- LOAD PROJECT DATA ---
+# --- LOAD CSV DATA DYNAMICALLY ---
 @st.cache_data
-def load_project_data():
-    data = {
-        "Project Name": [
-            "Institutional Setup & BOSS Establishment",
-            "Baseline Studies & Master Plan Updating",
-            "Port Operations Zone Expansion & Container Yard",
-            "Halal Processing & Certification Hub",
-            "Power Substation & Water Distribution System",
-            "Wharf Extension & Seawall Construction",
-            "Land Reclamation for Port Logistics",
-            "IT Park & Ecotourism Development",
-        ],
-        "Phase": [
-            "Phase 1 (2026-2030)",
-            "Phase 1 (2026-2030)",
-            "Phase 2 (2029-2035)",
-            "Phase 2 (2029-2035)",
-            "Phase 2 (2029-2035)",
-            "Phase 3 (2032-2038)",
-            "Phase 3 (2032-2038)",
-            "Phase 4 (2035-2040)",
-        ],
-        "Cost_PhP_M": [114.4, 150.0, 1200.0, 550.0, 250.0, 1800.0, 1200.0, 167.6],
-        "Status": [
-            "In Progress",
-            "In Progress",
-            "Planning",
-            "Planning",
-            "Not Started",
-            "Not Started",
-            "Not Started",
-            "Not Started",
-        ],
-        "Risk_Level": ["Low", "Low", "Medium", "Low", "Medium", "High", "High", "Low"],
-        "PAPs_Count": [20, 19, 18, 10, 4, 10, 6, 8],
-    }
-    return pd.DataFrame(data)
+def load_masterplan_data():
+    file_path = "MASTERPLAN PROJECTS.csv"
+    if os.path.exists(file_path):
+        try:
+            df = pd.read_csv(file_path, encoding="latin1")
+        except Exception:
+            df = pd.read_csv(file_path, encoding="cp1252")
+            
+        df.columns = [c.strip() for c in df.columns]
+        df['SECTOR'] = df['SECTOR'].str.strip()
+        df['CATEGORY'] = df['CATEGORY'].str.strip()
+        
+        def parse_amount(val):
+            if pd.isna(val):
+                return 0.0
+            s = str(val).replace("PhP", "").strip()
+            parts = s.split('.')
+            if len(parts) > 2:
+                s = parts[0] + '.' + ''.join(parts[1:])
+            s = s.replace(",", "").strip()
+            try:
+                return float(s)
+            except:
+                return 0.0
+
+        df['Cost_PhP'] = df['ESTIMATE AMOUNT'].apply(parse_amount)
+        df['Cost_PhP_M'] = df['Cost_PhP'] / 1e6
+        return df
+    else:
+        # Fallback dataset if file is missing
+        return pd.DataFrame({
+            "PROJECT NO.": range(1, 96),
+            "PROJECT TITLE": [f"Sample Master Plan PAP {i}" for i in range(1, 96)],
+            "SECTOR": ["Infrastructure"] * 21 + ["Institutional"] * 24 + ["Economic"] * 25 + ["Social"] * 13 + ["Environmental"] * 12,
+            "CATEGORY": ["Infrastructure Preparation"] * 95,
+            "Cost_PhP": [89724294.0] * 95,
+            "Cost_PhP_M": [89.72] * 95
+        })
 
 # --- LOAD REVENUE DATA ---
 @st.cache_data
@@ -229,8 +161,78 @@ def load_revenue_data():
             "Collected_Revenue": 2.2e6
         })
 
-df_projects = load_project_data()
+df_master = load_masterplan_data()
 df_rev = load_revenue_data()
+
+# --- TOP EXECUTIVE BANNER ---
+st.markdown(
+    """
+    <div style="background-color: #161B22; padding: 18px 24px; border-radius: 8px; border: 1px solid #30363D; text-align: left; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div>
+            <span style="background-color: #238636; color: #FFFFFF; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 12px; letter-spacing: 0.5px;">EXECUTIVE STRATEGY BRIEF</span>
+            <h2 style="color: #58A6FF; margin: 6px 0 2px 0; font-size: 22px; font-weight: 700;">POLLOC FREEPORT AND ECONOMIC ZONE (PFEZ)</h2>
+            <p style="color: #8B949E; margin: 0; font-size: 13px;">Master Development Plan Implementation & Technical Infrastructure Manpower Framework</p>
+        </div>
+        <div style="text-align: right;">
+            <span style="font-size: 11px; color: #8B949E;">Authority:</span><br>
+            <span style="font-size: 12px; color: #C9D1D9; font-weight: 600;">Bangsamoro Economic Zone Authority (BEZA)</span>
+        </div>
+    </div>
+""",
+    unsafe_allow_html=True,
+)
+
+# --- SIDEBAR NAVIGATION ---
+st.sidebar.image("https://img.icons8.com/color/96/port.png", width=45)
+st.sidebar.title("PFEZ Navigation")
+nav_selection = st.sidebar.radio(
+    "Select Module",
+    [
+        "Dashboard Home",
+        "Master Plan Projects Directory",
+        "Manpower Justification",
+        "Revenue Analytics & Forecasting",
+        "Spatial Map Viewer",
+        "M&E & Risk Matrix",
+    ],
+)
+
+st.sidebar.markdown("---")
+st.sidebar.info(
+    f"**Project Portfolio:** PFEZ Master Plan\n\n**Total PAPs:** {len(df_master)} Projects\n\n**Total Estimated Capital:** PhP {df_master['Cost_PhP_M'].sum()/1e3:.2f} Billion\n\n**Target Horizon:** 2026–2040"
+)
+
+# --- SIDEBAR AUTHOR BRANDING ---
+st.sidebar.markdown("---")
+st.sidebar.markdown("### Project Lead & Author")
+
+try:
+    st.sidebar.image("AirSad.png", width=120)
+except Exception:
+    st.sidebar.image("https://img.icons8.com/fluency/96/user-male-circle.png", width=75)
+
+st.sidebar.markdown(
+    """
+    <div style='font-size: 11px; color: #FFFFFF; font-weight: bold; margin-top: 8px;'>
+        ENGR. AIRSAD R. OLOMODIN, MBA, CBE
+    </div>
+    <div style='font-size: 11px; color: #8B949E; margin-top: 4px; line-height: 1.3;'>
+        📱 0975-256-9055 / 0929-336-7787<br>
+        ✉️ airsadolomodin@gmail.com
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown(
+    """
+    <div style='font-size: 10px; color: #8B949E; line-height: 1.3;'>
+    <b>Disclaimer:</b> Strategic decision-support tool built for BEZA infrastructure resource allocation and workforce expansion evaluation.
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 # --- MAP RENDERER HELPER ---
 def render_multi_layer_map(selected_files, height=310):
@@ -299,14 +301,14 @@ if nav_selection == "Dashboard Home":
 
     # --- STRATEGIC THESIS CALLOUT BANNER ---
     st.markdown(
-        """
+        f"""
         <div class="callout-box">
             <div style="display: flex; align-items: flex-start; gap: 12px;">
-                <span style="font-size: 24px;">🏗️</span>
+                <span style="font-size: 24px;">🏗️️</span>
                 <div>
-                    <h4 style="margin: 0 0 4px 0; color: #58A6FF; font-size: 15px;">STRATEGIC JUSTIFICATION FOR TECHNICAL MANPOWER EXPANSION</h4>
+                    <h4 style="margin: 0 0 4px 0; color: #58A6FF; font-size: 15px;">STRATEGIC JUSTIFICATION FOR TECHNICAL ENGINEERING MANPOWER EXPANSION</h4>
                     <p style="margin: 0; color: #C9D1D9; font-size: 12px; line-height: 1.5;">
-                        The PFEZ Master Development Plan commits <b>PhP 5.3 Billion</b> across 95 Programs and Projects (PAPs). Executing <b>Phase 1 (39 Initial PAPs / PhP 264.4M)</b> requires immediate augmentation of key engineering positions: <b>one Engineer V, one Engineer III, and two Engineer I positions</b>. Without this critical technical capacity, project execution delays threaten the foundational works and projected revenue trajectory.
+                        The PFEZ Master Development Plan commits <b>PhP {df_master['Cost_PhP_M'].sum()/1e3:.2f} Billion</b> across <b>{len(df_master)} Programs and Projects (PAPs)</b>. To successfully execute this multi-sectoral capital program, BEZA urgently requires technical reinforcement: <b>one Engineer V, one Engineer III, and two Engineer I positions</b>. Without dedicated engineering oversight, procurement bottlenecks and project management delays will jeopardize implementation timelines.
                     </p>
                 </div>
             </div>
@@ -316,57 +318,61 @@ if nav_selection == "Dashboard Home":
     )
 
     # --- KEY EXECUTIVE METRICS ---
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    with kpi1:
-        st.metric(label="Total Investment Capital", value="PhP 5.3 Billion", delta="95 PAPs Across 4 Phases")
-    with kpi2:
-        st.metric(label="Phase 1 Foundation Budget", value="PhP 264.4 Million", delta="39 Immediate Deliverables")
-    with kpi3:
-        st.metric(label="Engineering Position Request", value="4 Engineering Positions", delta="Engineer V, III, and two I")
-    with kpi4:
+    k1, k2, k3, k4 = st.columns(4)
+    with k1:
+        st.metric(label="Total Capital Budget", value=f"PhP {df_master['Cost_PhP_M'].sum()/1e3:.2f} Billion", delta=f"{len(df_master)} Official PAPs")
+    with k2:
+        infra_cost = df_master[df_master['SECTOR'] == 'Infrastructure']['Cost_PhP_M'].sum()
+        st.metric(label="Infrastructure Allocation", value=f"PhP {infra_cost:.2f} Million", delta=f"{len(df_master[df_master['SECTOR'] == 'Infrastructure'])} Major Works")
+    with k3:
+        st.metric(label="Requested Personnel", value="4 Positions", delta="Engineer V, III, and two I")
+    with k4:
         st.metric(label="Historical Revenue Collection", value=f"PhP {df_rev['Collected_Revenue'].sum()/1e6:.2f} M", delta="2024–2026 Baseline")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     # --- CHARTS ROW 1 ---
-    chart_col1, chart_col2 = st.columns(2)
+    c_col1, c_col2 = st.columns(2)
     
-    with chart_col1:
-        fig_phase = px.bar(
-            df_projects,
-            x="Phase",
+    with c_col1:
+        sector_agg = df_master.groupby('SECTOR')['Cost_PhP_M'].sum().reset_index()
+        fig_sec = px.bar(
+            sector_agg,
+            x="SECTOR",
             y="Cost_PhP_M",
-            color="Status",
-            title="Capital Expenditure Allocation by Phase & Execution Status (PhP M)",
+            text_auto=".1f",
+            title="Capital Budget Allocation by Sector (PhP Millions)",
             template="plotly_dark",
             height=320,
-            color_discrete_map={"In Progress": "#58A6FF", "Planning": "#F0883E", "Not Started": "#30363D"}
+            color="SECTOR",
+            color_discrete_sequence=px.colors.qualitative.Bold
         )
-        fig_phase.update_layout(
+        fig_sec.update_layout(
             margin=dict(l=10, r=10, t=40, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            showlegend=False
         )
-        st.plotly_chart(fig_phase, use_container_width=True)
+        st.plotly_chart(fig_sec, use_container_width=True)
 
-    with chart_col2:
-        fig_pie = px.pie(
-            df_projects,
-            names="Project Name",
+    with c_col2:
+        cat_agg = df_master.groupby('CATEGORY')['Cost_PhP_M'].sum().reset_index().sort_values('Cost_PhP_M', ascending=False)
+        fig_cat = px.pie(
+            cat_agg.head(8),
+            names="CATEGORY",
             values="Cost_PhP_M",
-            title="Major Project Capital Share Distribution",
+            title="Top 8 Investment Categories by Capital Share",
             hole=0.45,
             template="plotly_dark",
             height=320,
-            color_discrete_sequence=px.colors.qualitative.Dark24
+            color_discrete_sequence=px.colors.qualitative.Pastel
         )
-        fig_pie.update_layout(
+        fig_cat.update_layout(
             margin=dict(l=10, r=10, t=40, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)"
         )
-        st.plotly_chart(fig_pie, use_container_width=True)
+        st.plotly_chart(fig_cat, use_container_width=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -393,18 +399,13 @@ if nav_selection == "Dashboard Home":
     with bot_col2:
         st.markdown("### Historical Revenue Time Series & Trend Analysis")
         
-        # Calculate Trend Line
         x_numeric = np.arange(len(df_rev))
         y_vals = df_rev["Collected_Revenue"].values
         slope, intercept = np.polyfit(x_numeric, y_vals, 1)
         trend_line = slope * x_numeric + intercept
         
-        if slope > 0:
-            trend_status = "📈 UPTREND (+PhP 3.34k/mo)"
-            trend_color = "#238636"
-        else:
-            trend_status = "📉 DOWNTREND"
-            trend_color = "#DA3633"
+        trend_status = "📈 UPTREND (+PhP 3.34k/mo)" if slope > 0 else "📉 DOWNTREND"
+        trend_color = "#238636" if slope > 0 else "#DA3633"
 
         st.markdown(
             f"""
@@ -414,7 +415,7 @@ if nav_selection == "Dashboard Home":
                     <span style="font-size: 16px; font-weight: bold; color: {trend_color};">{trend_status}</span>
                 </div>
                 <div style="font-size: 11px; color: #C9D1D9; text-align: right;">
-                    Monthly Avg: <b>PhP 1.93M</b><br>Cumulative: <b>PhP 57.80M</b>
+                    Monthly Avg: <b>PhP {df_rev['Collected_Revenue'].mean()/1e6:.2f}M</b><br>Cumulative: <b>PhP {df_rev['Collected_Revenue'].sum()/1e6:.2f}M</b>
                 </div>
             </div>
             """,
@@ -454,18 +455,41 @@ if nav_selection == "Dashboard Home":
         st.plotly_chart(fig_ts, use_container_width=True)
 
 # ==========================================
-# 2. MANPOWER & INFRASTRUCTURE JUSTIFICATION VIEW
+# 2. MASTER PLAN PROJECTS DIRECTORY VIEW
 # ==========================================
-elif nav_selection == "Manpower & Infrastructure Justification":
+elif nav_selection == "Master Plan Projects Directory":
+    st.title("📋 Master Plan Programs & Projects (PAPs) Directory")
+    st.markdown(f"Complete database of **{len(df_master)} PAPs** totaling **PhP {df_master['Cost_PhP_M'].sum():,.2f} Million**.")
+
+    col_filter1, col_filter2 = st.columns(2)
+    with col_filter1:
+        selected_sectors = st.multiselect("Filter by Sector:", options=sorted(df_master['SECTOR'].unique()), default=sorted(df_master['SECTOR'].unique()))
+    with col_filter2:
+        selected_cats = st.multiselect("Filter by Category:", options=sorted(df_master['CATEGORY'].unique()), default=sorted(df_master['CATEGORY'].unique()))
+
+    df_filtered = df_master[(df_master['SECTOR'].isin(selected_sectors)) & (df_master['CATEGORY'].isin(selected_cats))]
+
+    st.markdown(f"**Showing {len(df_filtered)} of {len(df_master)} Projects | Subtotal: PhP {df_filtered['Cost_PhP_M'].sum():,.2f} Million**")
+
+    st.dataframe(
+        df_filtered[["PROJECT NO.", "PROJECT TITLE", "SECTOR", "CATEGORY", "ESTIMATE AMOUNT"]],
+        use_container_width=True,
+        height=500
+    )
+
+# ==========================================
+# 3. MANPOWER & INFRASTRUCTURE JUSTIFICATION VIEW
+# ==========================================
+elif nav_selection == "Manpower Justification":
     st.title("👷 Technical Engineering Manpower Justification")
-    st.markdown("Detailed resource analysis justifying the operational necessity for **Engineer V, Engineer III, and two Engineer I** positions to execute the **PFEZ Master Development Plan**.")
+    st.markdown("Operational necessity analysis justifying the direct appointment of **Engineer V, Engineer III, and two Engineer I** positions.")
 
     st.markdown(
         """
         <div class="callout-box">
-            <h4 style="margin: 0 0 6px 0; color: #58A6FF;">Core Engineering Rationale</h4>
+            <h4 style="margin: 0 0 6px 0; color: #58A6FF;">Core Technical Rationale</h4>
             <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.5;">
-                Foundational works—such as the <b>Wharf Extension, Land Reclamation, Container Yard Expansion, and BOSS Infrastructure</b>—are complex, highly technical engineering projects. Establishing an active engineering unit composed of an <b>Engineer V (Division Chief/Lead), Engineer III (Senior Technical Lead), and two Engineer I (Project Supervision & Field Engineers)</b> guarantees quality compliance, timely execution, and risk mitigation across all 39 Phase 1 PAPs.
+                Executing complex infrastructure, port extension, environmental baselines, and institutional development requires an agile, certified technical workforce. Approving the requested headcount—<b>Engineer V (Division Lead), Engineer III (Senior Technical Lead), and two Engineer I positions (Field & QA/QC Engineers)</b>—ensures robust project supervision, timely procurement, and high-quality civil engineering execution across all 95 PAPs.
             </p>
         </div>
         """,
@@ -475,14 +499,14 @@ elif nav_selection == "Manpower & Infrastructure Justification":
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("### Specific Engineering Position Requirements")
+        st.markdown("### Requested Engineering Headcount")
         
         staff_data = pd.DataFrame({
             "Engineering Position": [
-                "Engineer V (Division Head / Strategic Lead)",
+                "Engineer V (Division Chief / Strategic Lead)",
                 "Engineer III (Senior Project / Technical Lead)",
-                "Engineer I - Position A (Field & Construction Supervision)",
-                "Engineer I - Position B (Spatial Data & QA/QC Engineer)"
+                "Engineer I - Position A (Field & Civil Works Supervision)",
+                "Engineer I - Position B (QA/QC & Spatial Data Engineer)"
             ],
             "Requested Positions": [1, 1, 1, 1]
         })
@@ -491,7 +515,7 @@ elif nav_selection == "Manpower & Infrastructure Justification":
         fig_staff.add_trace(go.Bar(
             y=staff_data["Engineering Position"], 
             x=staff_data["Requested Positions"], 
-            name="Requested Personnel", 
+            name="Personnel Headcount", 
             orientation='h', 
             marker_color='#58A6FF',
             text=staff_data["Requested Positions"],
@@ -504,45 +528,44 @@ elif nav_selection == "Manpower & Infrastructure Justification":
             margin=dict(l=10, r=10, t=20, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            xaxis=dict(dtick=1, range=[0, 2]),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            xaxis=dict(dtick=1, range=[0, 2])
         )
         st.plotly_chart(fig_staff, use_container_width=True)
 
     with col2:
-        st.markdown("### Role Allocation & Responsibilities")
+        st.markdown("### Functional Mandate Breakdown")
         
-        risk_table = pd.DataFrame({
-            "Position": ["Engineer V", "Engineer III", "Engineer I (Field)", "Engineer I (QA/QC & GIS)"],
-            "Primary Functional Mandate": [
-                "Strategic infrastructure leadership, division management, & inter-agency coordination",
-                "Detailed engineering design review, contract monitoring, & procurement compliance",
-                "On-site monitoring, project inspection, & civil works quality verification",
-                "Geospatial layer integration, structural QA/QC documentation, & monitoring report generation"
+        roles_table = pd.DataFrame({
+            "Position Title": ["Engineer V", "Engineer III", "Engineer I (Field)", "Engineer I (QA/QC & GIS)"],
+            "Primary Responsibilities": [
+                "Division management, strategic program alignment, and multi-agency infrastructure governance",
+                "Detailed engineering design review, technical specifications, and procurement oversight",
+                "On-site project inspection, contractor compliance, and civil works measurement",
+                "Quality assurance, structural monitoring documentation, and GIS layer integration"
             ]
         })
-        st.dataframe(risk_table, use_container_width=True, height=340)
+        st.dataframe(roles_table, use_container_width=True, height=340)
 
 # ==========================================
-# 3. REVENUE ANALYTICS & FORECASTING VIEW
+# 4. REVENUE ANALYTICS & FORECASTING VIEW
 # ==========================================
 elif nav_selection == "Revenue Analytics & Forecasting":
     st.title("📈 Revenue Collection Analytics & Master Plan Forecasting")
-    st.markdown("Time series evaluation of monthly historical revenue collection (2024–2026) and long-term revenue forecasting under the **PFEZ Master Plan PAPs (2026–2040)**.")
+    st.markdown("Historical revenue analysis (2024–2026) and long-term financial modeling under the **PFEZ Master Plan PAPs (2026–2040)**.")
 
-    st.markdown("### 1. Historical Revenue Collection Time Series (2024–2026)")
+    st.markdown("### 1. Historical Revenue Breakdown")
     
     fig_hist = go.Figure()
     fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Traditional"], mode='lines+markers', name='Traditional Revenue', line=dict(color='#A371F7')))
     fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Non_Traditional"], mode='lines+markers', name='Non-Traditional Revenue', line=dict(color='#F0883E')))
-    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Collected_Revenue"], mode='lines+markers', name='Total Collected Revenue', line=dict(width=3, color='#58A6FF')))
+    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Collected_Revenue"], mode='lines+markers', name='Total Revenue Collected', line=dict(width=3, color='#58A6FF')))
     
     fig_hist.update_layout(
         template="plotly_dark",
-        title="Monthly Revenue Collections Breakdown (PhP)",
+        title="Monthly Revenue Collections (PhP)",
         xaxis_title="Timeline",
         yaxis_title="Revenue (PhP)",
-        height=380,
+        height=360,
         margin=dict(l=10, r=10, t=40, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)"
@@ -551,105 +574,57 @@ elif nav_selection == "Revenue Analytics & Forecasting":
 
     st.markdown("---")
 
-    st.markdown("### 2. Master Plan PAP Implementation Revenue Forecast Model (2026–2040)")
+    st.markdown("### 2. Integrated Revenue Forecast Model (2026–2040)")
     
     col_param1, col_param2 = st.columns(2)
     with col_param1:
-        base_annual_growth = st.slider("Baseline Organic Annual Growth Rate (%)", min_value=1.0, max_value=10.0, value=3.5, step=0.5)
+        base_growth = st.slider("Organic Baseline Annual Growth (%)", min_value=1.0, max_value=10.0, value=3.5, step=0.5)
     with col_param2:
-        pap_efficiency_boost = st.slider("PAPs Implementation Multiplier", min_value=1.0, max_value=2.5, value=1.4, step=0.1)
+        pap_multiplier = st.slider("PAPs Implementation Multiplier", min_value=1.0, max_value=2.5, value=1.4, step=0.1)
 
     annual_2025_base = df_rev[df_rev["Date"].dt.year == 2025]["Collected_Revenue"].sum()
-    
     years = list(range(2026, 2041))
+    
     baseline_proj = []
     masterplan_proj = []
     
     for y in years:
         n = y - 2025
-        b_val = annual_2025_base * ((1 + (base_annual_growth / 100)) ** n)
+        b_val = annual_2025_base * ((1 + (base_growth / 100)) ** n)
         baseline_proj.append(b_val)
         
-        if y <= 2028:
-            phase_multiplier = 1.20
-        elif y <= 2031:
-            phase_multiplier = 1.55
-        elif y <= 2035:
-            phase_multiplier = 2.00
-        else:
-            phase_multiplier = 2.40
-            
-        m_val = b_val * (1 + (phase_multiplier - 1) * pap_efficiency_boost)
+        phase_mult = 1.20 if y <= 2028 else (1.55 if y <= 2031 else (2.00 if y <= 2035 else 2.40))
+        m_val = b_val * (1 + (phase_mult - 1) * pap_multiplier)
         masterplan_proj.append(m_val)
 
     df_forecast = pd.DataFrame({
         "Year": years,
-        "Baseline Projection (PhP M)": [v / 1e6 for v in baseline_proj],
-        "Master Plan Integrated Forecast (PhP M)": [v / 1e6 for v in masterplan_proj]
+        "Baseline (PhP M)": [v / 1e6 for v in baseline_proj],
+        "Master Plan Integrated (PhP M)": [v / 1e6 for v in masterplan_proj]
     })
 
     fig_fore = go.Figure()
-    fig_fore.add_trace(go.Scatter(
-        x=df_forecast["Year"], 
-        y=df_forecast["Baseline Projection (PhP M)"], 
-        mode='lines+markers', 
-        name='Business-As-Usual (Without PAPs)', 
-        line=dict(dash='dash', color='#8B949E')
-    ))
-    fig_fore.add_trace(go.Scatter(
-        x=df_forecast["Year"], 
-        y=df_forecast["Master Plan Integrated Forecast (PhP M)"], 
-        mode='lines+markers', 
-        name='Master Plan Integrated Revenue', 
-        line=dict(width=3, color='#238636')
-    ))
+    fig_fore.add_trace(go.Scatter(x=df_forecast["Year"], y=df_forecast["Baseline (PhP M)"], mode='lines+markers', name='Business-As-Usual', line=dict(dash='dash', color='#8B949E')))
+    fig_fore.add_trace(go.Scatter(x=df_forecast["Year"], y=df_forecast["Master Plan Integrated (PhP M)"], mode='lines+markers', name='Master Plan Integrated Revenue', line=dict(width=3, color='#238636')))
 
     fig_fore.update_layout(
         template="plotly_dark",
-        title="Projected Annual Revenue Trajectory (2026–2040) in PhP Millions",
+        title="Projected Annual Revenue Trajectory (PhP Millions)",
         xaxis_title="Year",
         yaxis_title="Annual Revenue (PhP Millions)",
-        height=420,
+        height=400,
         margin=dict(l=10, r=10, t=40, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)"
     )
     st.plotly_chart(fig_fore, use_container_width=True)
 
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric("2030 Expected Annual Revenue", f"PhP {df_forecast.loc[df_forecast['Year']==2030, 'Master Plan Integrated Forecast (PhP M)'].values[0]:.2f} M", "Phase 1 Impact")
-    with c2:
-        st.metric("2035 Expected Annual Revenue", f"PhP {df_forecast.loc[df_forecast['Year']==2035, 'Master Plan Integrated Forecast (PhP M)'].values[0]:.2f} M", "Phase 2 & 3 Online")
-    with c3:
-        st.metric("Total Master Plan Value Add", f"PhP {(df_forecast['Master Plan Integrated Forecast (PhP M)'].sum() - df_forecast['Baseline Projection (PhP M)'].sum()):.2f} M", "2026-2040 Cumulative Uplift")
-
-# ==========================================
-# 4. INVESTMENT PHASING VIEW
-# ==========================================
-elif nav_selection == "Investment Phasing":
-    st.title("💰 Investment & Phasing Program (2026–2040)")
-    st.markdown("Detailed breakdown of the **95 Programs and Projects (PAPs)** amounting to **PhP 5.3 Billion** across 4 distinct phases as outlined in the Phase 3 SDPIP Report.")
-    
-    col_p1, col_p2, col_p3, col_p4 = st.columns(4)
-    with col_p1:
-        st.metric("Phase 1 (2026-2030)", "PhP 264.4 M", "39 PAPs")
-    with col_p2:
-        st.metric("Phase 2 (2029-2035)", "PhP 2.0 B", "32 PAPs")
-    with col_p3:
-        st.metric("Phase 3 (2032-2038)", "PhP 3.0 B", "16 PAPs")
-    with col_p4:
-        st.metric("Phase 4 (2035-2040)", "PhP 167.6 M", "8 PAPs")
-        
-    st.markdown("---")
-    st.dataframe(df_projects, use_container_width=True)
-
 # ==========================================
 # 5. SPATIAL MAP VIEWER & OPEN ZONE MAP
 # ==========================================
 elif nav_selection == "Spatial Map Viewer":
     st.title("🗺️ Spatial Development & Land Use Map Viewer")
-    st.markdown("Interactive GIS viewer integrating local vector zoning layers and the **Open Zone Map** global economic zone repository.")
+    st.markdown("Interactive GIS viewer integrating local vector zoning layers and the global economic zone repository.")
 
     map_type = st.radio("Select View Mode:", ["Local QGIS Zoning Layers (Folium)", "Global Open Zone Map (Embedded Iframe)"], horizontal=True)
 
@@ -661,7 +636,7 @@ elif nav_selection == "Spatial Map Viewer":
         geojson_files = sorted([f for f in os.listdir(".") if f.endswith(".geojson")])
         
         if geojson_files:
-            st.write("Select one or multiple QGIS vector layers to display on the master map:")
+            st.write("Select vector layers to display on the master map:")
             selected_layers = st.multiselect(
                 "Active Zoning Layers",
                 geojson_files,
@@ -677,15 +652,13 @@ elif nav_selection == "Spatial Map Viewer":
                     
                 with legend_col:
                     st.markdown("### 🗂 Zoning Layers Legend")
-                    st.markdown("<p style='font-size: 12px; color: #8B949E;'>Active zones currently rendered:</p>", unsafe_allow_html=True)
-                    
                     if legend_items:
                         for name, col in legend_items:
                             st.markdown(
                                 f"""
                                 <div style="display: flex; align-items: center; background-color: #161B22; border: 1px solid #30363D; padding: 8px 10px; border-radius: 6px; margin-bottom: 8px;">
                                     <span style="width: 14px; height: 14px; background-color: {col}; border: 1px solid #ffffff; display: inline-block; margin-right: 10px; border-radius: 3px; flex-shrink: 0;"></span>
-                                    <span style="font-size: 12px; color: #FAFAFA; font-weight: 500; word-break: break-word;">{name}</span>
+                                    <span style="font-size: 12px; color: #FAFAFA; font-weight: 500;">{name}</span>
                                 </div>
                                 """,
                                 unsafe_allow_html=True,
@@ -695,24 +668,27 @@ elif nav_selection == "Spatial Map Viewer":
             else:
                 st.info("Select at least one layer above to render the map.")
         else:
-            st.warning("No `.geojson` files found in the repository. Please ensure QGIS vector exports are placed in the app directory.")
+            st.warning("No `.geojson` files found in the directory.")
 
 # ==========================================
 # 6. M&E & RISK MATRIX VIEW
 # ==========================================
 elif nav_selection == "M&E & Risk Matrix":
     st.title("📊 Monitoring & Evaluation (M&E) & Risk Matrix")
-    st.markdown("Tracking project risks, mitigation measures, and performance indicators across the PFEZ master development lifecycle.")
+    st.markdown("Tracking strategic risks, mitigation frameworks, and performance indicators across the Master Plan lifecycle.")
     
-    risk_df = df_projects[["Project Name", "Phase", "Risk_Level", "Status"]].copy()
-    risk_df["Mitigation Strategy"] = [
-        "Early institutional alignment with BEZA and BARMM ministries",
-        "Engage technical consultants for comprehensive baseline data",
-        "Establish PPP frameworks and secure ODA co-financing",
-        "Strict adherence to Halal accreditation standards and stakeholder engagement",
-        "Coordinate with local power cooperatives and DPWH",
-        "Phased marine engineering studies and environmental safeguards",
-        "Rigorous geotechnical and hydrodynamic modeling for reclamation",
-        "Incorporate green building standards and renewable energy components",
+    risk_summary = df_master.groupby('SECTOR').agg(
+        Total_Projects=('PROJECT NO.', 'count'),
+        Total_Cost_M=('Cost_PhP_M', 'sum')
+    ).reset_index()
+
+    risk_summary['Risk Rating'] = ['Low', 'Low', 'High', 'Medium', 'Low']
+    risk_summary['Primary Mitigation Strategy'] = [
+        "Incentive package design & targeted investor roadshows",
+        "Comprehensive EIA baseline surveys & regulatory compliance",
+        "Dedicated engineering division (Engineer V, III, I) for direct field supervision & QA/QC",
+        "Capacity development & inter-agency administrative alignment",
+        "Community stakeholder consultations & social development planning"
     ]
-    st.dataframe(risk_df, use_container_width=True)
+
+    st.dataframe(risk_summary, use_container_width=True, height=300)
