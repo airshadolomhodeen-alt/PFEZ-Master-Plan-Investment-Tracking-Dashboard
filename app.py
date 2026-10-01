@@ -134,7 +134,7 @@ def render_historical_revenue_chart(df):
             ),
             fill="toself",
             fillcolor="rgba(59, 130, 246, 0.08)",
-            line=dict(color="rgba(96, 165, 250, 0.3)", width=1, dash="dot"),
+            line=dict(color="rgba(96, 165, 250, 0.4)", width=1, dash="dot"),
             hoverinfo="skip",
             name="Historical Mean ± 1σ",
             showlegend=True,
@@ -237,24 +237,24 @@ def render_revenue_breakdown_chart(df):
 
     fig = go.Figure()
 
-    # Stacked Bar 1: Traditional
+    # Stacked Bar 1: Traditional Revenue
     fig.add_trace(
         go.Bar(
             x=df_plot["Date"],
             y=trad_m,
-            name="Traditional Revenue (Ship Calls)",
+            name="Traditional Revenue",
             marker_color="#A855F7",
             customdata=np.stack((trad_m, non_trad_m, total_m), axis=-1),
             hovertemplate="<b>%{x|%B %Y}</b><br>Traditional: PhP %{customdata[0]:.2f}M<br>Non-Traditional: PhP %{customdata[1]:.2f}M<br><b>Total Revenue: PhP %{customdata[2]:.2f}M</b><extra></extra>",
         )
     )
 
-    # Stacked Bar 2: Non-Traditional
+    # Stacked Bar 2: Non-Traditional Revenue
     fig.add_trace(
         go.Bar(
             x=df_plot["Date"],
             y=non_trad_m,
-            name="Non-Traditional Revenue (Leases / Rentals)",
+            name="Non-Traditional Revenue",
             marker_color="#F97316",
             customdata=np.stack((trad_m, non_trad_m, total_m), axis=-1),
             hovertemplate="<b>%{x|%B %Y}</b><br>Traditional: PhP %{customdata[0]:.2f}M<br>Non-Traditional: PhP %{customdata[1]:.2f}M<br><b>Total Revenue: PhP %{customdata[2]:.2f}M</b><extra></extra>",
@@ -320,7 +320,7 @@ def render_revenue_forecast_chart(df_forecast):
             x=df_plot["Year"],
             y=df_plot["BAU_M"],
             mode="lines+markers",
-            name="Business-As-Usual (BAU)",
+            name="Business-As-Usual",
             line=dict(color="#94A3B8", width=2, dash="dash"),
             marker=dict(size=5),
             hovertemplate="<b>Year %{x}</b><br>BAU Revenue: PhP %{y:.1f}M<extra></extra>",
@@ -339,7 +339,7 @@ def render_revenue_forecast_chart(df_forecast):
             fill="tonexty",
             fillcolor="rgba(16, 185, 129, 0.12)",
             customdata=df_plot["Master_M"] - df_plot["BAU_M"],
-            hovertemplate="<b>Year %{x}</b><br>Integrated Revenue: PhP %{y:.1f}M<br>Incremental Potential: +PhP %{customdata:.1f}M<extra></extra>",
+            hovertemplate="<b>Year %{x}</b><br>Integrated Revenue: PhP %{y:.1f}M<br>Incremental Revenue Potential: +PhP %{customdata:.1f}M<extra></extra>",
         )
     )
 
@@ -374,7 +374,7 @@ def render_revenue_forecast_chart(df_forecast):
 
     fig.update_layout(
         title=dict(
-            text="<b>Integrated Revenue Projection & Investment Value Gap (2026–2040)</b><br><sup>Evaluating organic BAU trajectory against accelerated Master Plan infrastructure deployment</sup>",
+            text="<b>Integrated Revenue Projection & Incremental Potential (2026–2040)</b><br><sup>Evaluating organic BAU trajectory against accelerated Master Plan infrastructure deployment</sup>",
             font=dict(size=16),
         )
     )
