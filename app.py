@@ -72,7 +72,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- STRICT DATA LOADING (NO MOCK FALLBACKS) ---
+# --- STRICT DATA LOADING (NO MOCK FALLBACKS & REMOVED BLANK FUTURE MONTHS) ---
 @st.cache_data
 def load_masterplan_data():
     file_path = "MASTERPLAN PROJECTS.csv"
@@ -172,6 +172,9 @@ def load_revenue_data():
         df_clean = pd.DataFrame(clean_rows)
         if not df_clean.empty:
             df_clean["Date"] = pd.date_range(start="2024-01-01", periods=len(df_clean), freq="MS")
+            # --- FILTER OUT NO DATA / ZERO REVENUE PERIODS (e.g. July 2026 to Dec 2026) ---
+            df_clean = df_clean[df_clean["Collected_Revenue"] > 0].reset_index(drop=True)
+            
         return df_clean
     except Exception:
         return pd.DataFrame()
@@ -358,7 +361,7 @@ if nav_selection == "Dashboard Home":
             st.metric(label="Engineering Request", value="4 Positions", delta="Engineer V, III, and two I")
         with k4:
             rev_total = f"PhP {df_rev['Collected_Revenue'].sum()/1e9:.3f} Billion" if not df_rev.empty else "N/A"
-            st.metric(label="Historical Revenue Baseline", value=rev_total, delta="Official Data Records")
+            st.metric(label="Historical Revenue Baseline", value=rev_total, delta="Recorded Actuals")
 
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("### 🎯 Evaluator View: Phase Implementation Roadmap")
@@ -461,17 +464,17 @@ if nav_selection == "Dashboard Home":
                 x_numeric = np.arange(len(df_rev))
                 y_vals = df_rev["Collected_Revenue"].values
                 
-                if len(y_vals) > 1 and np.sum(y_vals) > 0:
+                if len(y_vals) > 1:
                     slope, intercept = np.polyfit(x_numeric, y_vals, 1)
                     trend_line = slope * x_numeric + intercept
-                    trend_status = "📈 UPTREND" if slope > 0 else "📉 DOWNTREND"
-                    trend_color = "#238636" if slope > 0 else "#DA3633"
+                    trend_status = "📈 UPTREND" if slope >= 0 else "📉 DOWNTREND"
+                    trend_color = "#238636" if slope >= 0 else "#DA3633"
 
                     st.markdown(
                         f"""
                         <div style="background-color: #161B22; border: 1px solid #30363D; padding: 10px 14px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                             <div>
-                                <span style="font-size: 11px; color: #8B949E;">Baseline Historical Collection Trend:</span><br>
+                                <span style="font-size: 11px; color: #8B949E;">Actual Historical Collection Trend:</span><br>
                                 <span style="font-size: 16px; font-weight: bold; color: {trend_color};">{trend_status}</span>
                             </div>
                             <div style="font-size: 11px; color: #C9D1D9; text-align: right;">
@@ -514,7 +517,7 @@ if nav_selection == "Dashboard Home":
                     )
                     st.plotly_chart(fig_ts, use_container_width=True)
                 else:
-                    st.info("Insufficient non-zero revenue records to establish trendline.")
+                    st.info("Insufficient revenue records to establish trendline.")
             else:
                 st.warning("REVENUE.xlsx data not available.")
 
