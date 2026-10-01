@@ -112,7 +112,6 @@ def load_masterplan_data():
         df['Cost_PhP'] = df['ESTIMATE AMOUNT'].apply(parse_amount)
         df['Cost_PhP_B'] = df['Cost_PhP'] / 1e9
 
-        # Phase & PCM Assignment Mapping
         def assign_phase(p_no):
             if p_no <= 39:
                 return "Phase 1 (2026–2030)"
@@ -145,6 +144,7 @@ def load_masterplan_data():
             "PROJECT TITLE": [f"Sample Master Plan PAP {i}" for i in p_list],
             "SECTOR": ["Infrastructure"] * 21 + ["Institutional"] * 24 + ["Economic"] * 25 + ["Social"] * 13 + ["Environmental"] * 12,
             "CATEGORY": ["Infrastructure Preparation"] * 95,
+            "ESTIMATE AMOUNT": ["PhP 89,724,294.00"] * 95,
             "Cost_PhP": [89724294.0] * 95,
             "Cost_PhP_B": [0.0897] * 95,
             "Phase": phases,
@@ -155,50 +155,54 @@ def load_masterplan_data():
 def load_revenue_data():
     file_path = "REVENUE.xlsx"
     if os.path.exists(file_path):
-        df_raw = pd.read_excel(file_path, sheet_name=0, engine="openpyxl")
-        clean_rows = []
-        for idx in range(2, 32):
-            row = df_raw.iloc[idx]
-            m_str = str(row["Unnamed: 0"]).strip()
-            
-            def parse_num(val):
-                if pd.isna(val):
-                    return 0.0
-                s = str(val).replace("₱", "").replace(",", "").replace("\n", "").strip()
-                try:
-                    return float(s)
-                except:
-                    return 0.0
+        try:
+            df_raw = pd.read_excel(file_path, sheet_name=0, engine="openpyxl")
+            clean_rows = []
+            for idx in range(2, min(32, len(df_raw))):
+                row = df_raw.iloc[idx]
+                m_str = str(row.iloc[0]).strip() if not pd.isna(row.iloc[0]) else f"Month {idx-1}"
+                
+                def parse_num(val):
+                    if pd.isna(val):
+                        return 0.0
+                    s = str(val).replace("₱", "").replace(",", "").replace("\n", "").strip()
+                    try:
+                        return float(s)
+                    except:
+                        return 0.0
 
-            trad = parse_num(row["Unnamed: 2"])
-            non_trad = parse_num(row["Unnamed: 4"])
-            bto = parse_num(row["Unnamed: 6"])
-            bir = parse_num(row["Unnamed: 8"])
-            collected = parse_num(row["Unnamed: 10"])
+                trad = parse_num(row.iloc[2]) if len(row) > 2 else 0.0
+                non_trad = parse_num(row.iloc[4]) if len(row) > 4 else 0.0
+                bto = parse_num(row.iloc[6]) if len(row) > 6 else 0.0
+                bir = parse_num(row.iloc[8]) if len(row) > 8 else 0.0
+                collected = parse_num(row.iloc[10]) if len(row) > 10 else 0.0
+                
+                clean_rows.append({
+                    "Month_Raw": m_str,
+                    "Traditional": trad,
+                    "Non_Traditional": non_trad,
+                    "BTO_Remittance": bto,
+                    "BIR_Remittance": bir,
+                    "Collected_Revenue": collected
+                })
             
-            clean_rows.append({
-                "Month_Raw": m_str,
-                "Traditional": trad,
-                "Non_Traditional": non_trad,
-                "BTO_Remittance": bto,
-                "BIR_Remittance": bir,
-                "Collected_Revenue": collected
-            })
-        
-        df_clean = pd.DataFrame(clean_rows)
-        date_list = pd.date_range(start="2024-01-01", periods=len(df_clean), freq="MS")
-        df_clean["Date"] = date_list
-        return df_clean
-    else:
-        dates = pd.date_range(start="2024-01-01", periods=30, freq="MS")
-        return pd.DataFrame({
-            "Date": dates,
-            "Traditional": 1e6,
-            "Non_Traditional": 1e6,
-            "BTO_Remittance": 2e6,
-            "BIR_Remittance": 2e5,
-            "Collected_Revenue": 2.2e6
-        })
+            df_clean = pd.DataFrame(clean_rows)
+            if not df_clean.empty:
+                date_list = pd.date_range(start="2024-01-01", periods=len(df_clean), freq="MS")
+                df_clean["Date"] = date_list
+                return df_clean
+        except Exception as e:
+            st.sidebar.warning(f"Note: Could not parse REVENUE.xlsx ({e}). Using default baseline structure.")
+    
+    dates = pd.date_range(start="2024-01-01", periods=30, freq="MS")
+    return pd.DataFrame({
+        "Date": dates,
+        "Traditional": [1000000.0 + i*15000 for i in range(30)],
+        "Non_Traditional": [800000.0 + i*12000 for i in range(30)],
+        "BTO_Remittance": [2000000.0] * 30,
+        "BIR_Remittance": [200000.0] * 30,
+        "Collected_Revenue": [1800000.0 + i*27000 for i in range(30)]
+    })
 
 df_master = load_masterplan_data()
 df_rev = load_revenue_data()
@@ -228,6 +232,8 @@ st.markdown(
 # ==========================================
 st.sidebar.image("https://img.icons8.com/color/96/port.png", width=45)
 st.sidebar.title("PFEZ Navigation")
+
+# Assigned to both nav_selection and selected_module to prevent NameError
 nav_selection = st.sidebar.radio(
     "Select Module",
     [
@@ -240,6 +246,7 @@ nav_selection = st.sidebar.radio(
         "M&E & Risk Matrix",
     ],
 )
+selected_module = nav_selection
 
 st.sidebar.markdown("---")
 st.sidebar.info(
@@ -278,7 +285,7 @@ st.sidebar.markdown(
 )
 
 # ==========================================
-# 5. MAP RENDERER HELPER (DYNAMIC RE-CENTERING)
+# 5. MAP RENDERER HELPER
 # ==========================================
 def render_multi_layer_map(selected_files, height=310):
     all_gdfs = []
@@ -290,8 +297,8 @@ def render_multi_layer_map(selected_files, height=310):
     
     folium.TileLayer(
         tiles=esri_tile_url,
-        attr="Esri World Street Map",
-        name="Esri World Street Map",
+        attr="Esri",
+        name="esriworldstreetmap",
         control=True,
         max_zoom=19,
     ).add_to(m)
@@ -321,11 +328,10 @@ def render_multi_layer_map(selected_files, height=310):
                     name=display_name,
                     style_function=lambda x, color=hex_color: {
                         'fillColor': color,
-                        'color': '#1E293B',
+                        'color': '#333333',
                         'weight': 1.5,
-                        'fillOpacity': 0.65,
+                        'fillOpacity': 0.75,
                     },
-                    tooltip=folium.GeoJsonTooltip(fields=[gdf.columns[0]], aliases=["Name:"]) if len(gdf.columns) > 0 else None
                 ).add_to(m)
         except Exception:
             pass
@@ -338,9 +344,12 @@ def render_multi_layer_map(selected_files, height=310):
     st_folium(m, width="100%", height=height)
     return legend_items
 
+
 # ==========================================
+# MODULE ROUTING (CONTIGUOUS IF/ELIF CHAIN)
+# ==========================================
+
 # MODULE 1: DASHBOARD HOME VIEW
-# ==========================================
 if nav_selection == "Dashboard Home":
 
     st.markdown(
@@ -557,9 +566,7 @@ if nav_selection == "Dashboard Home":
         )
         st.plotly_chart(fig_ts, use_container_width=True)
 
-# ==========================================
 # MODULE 2: INVESTMENT PHASING VIEW
-# ==========================================
 elif nav_selection == "Investment Phasing (Phases 1–4)":
     st.title("💰 Investment & Phasing Program (2026–2040)")
     st.markdown("Detailed evaluator breakdown of the **95 Programs and Projects (PAPs)** amounting to **PhP 8.524 Billion** across 4 implementation phases.")
@@ -586,9 +593,7 @@ elif nav_selection == "Investment Phasing (Phases 1–4)":
     st.markdown(f"**Displaying {len(df_phase_view)} PAPs | Total Budget: PhP {df_phase_view['Cost_PhP_B'].sum():,.3f} Billion**")
     st.dataframe(df_phase_view[["PROJECT NO.", "PROJECT TITLE", "SECTOR", "CATEGORY", "Phase", "PCM Stage", "ESTIMATE AMOUNT"]], use_container_width=True, height=450)
 
-# ==========================================
 # MODULE 3: MASTER PLAN PROJECTS DIRECTORY VIEW
-# ==========================================
 elif nav_selection == "Master Plan Projects Directory":
     st.title("📋 Master Plan Programs & Projects (PAPs) Directory")
     st.markdown(f"Complete searchable database of **{len(df_master)} PAPs** totaling **PhP {df_master['Cost_PhP_B'].sum():,.3f} Billion**.")
@@ -615,9 +620,7 @@ elif nav_selection == "Master Plan Projects Directory":
         height=480
     )
 
-# ==========================================
 # MODULE 4: MANPOWER JUSTIFICATION VIEW
-# ==========================================
 elif nav_selection == "Manpower Justification":
     st.title("👷 Technical Engineering Manpower Justification")
     st.markdown("Operational necessity analysis justifying the direct appointment of **Engineer V, Engineer III, and two Engineer I** positions.")
@@ -685,93 +688,116 @@ elif nav_selection == "Manpower Justification":
         st.dataframe(roles_table, use_container_width=True, height=340)
 
 # ==========================================
-# MODULE 5: REVENUE ANALYTICS & FORECASTING
+# MODULE 5: REVENUE ANALYTICS VIEW (PROTECTED)
 # ==========================================
-elif selected_module == "Revenue Analytics & Forecasting":
-    st.header("📈 Revenue Analytics & Forecasting")
-    st.write("Executive financial tracking, stream decomposition, and strategic long-term forecast models.")
+elif nav_selection == "Revenue Analytics & Forecasting":
+    st.title("📈 Revenue Collection Analytics & Master Plan Forecasting")
+    st.markdown("Historical revenue analysis (2024–2026) and long-term financial modeling under the **PFEZ Master Plan PAPs (2026–2040)**.")
+
+    st.markdown("### 💡 Revenue Stream Definitions & Classification")
     
-    # 1. Safely load datasets
-    try:
-        df_hist = load_historical_data()
-        df_forecast = load_forecast_data()
-    except NameError as e:
-        st.error(f"⚠️ Function Definition Error: {e}. Please ensure data loader functions are defined at the top of app.py.")
-        df_hist, df_forecast = None, None
+    rev_col1, rev_col2 = st.columns(2)
+    with rev_col1:
+        st.markdown(
+            """
+            <div style="background-color: #161B22; border-left: 4px solid #A371F7; border-top: 1px solid #30363D; border-right: 1px solid #30363D; border-bottom: 1px solid #30363D; padding: 14px 18px; border-radius: 8px; height: 100%;">
+                <h4 style="margin: 0 0 6px 0; color: #A371F7; font-size: 16px;">⚓ Traditional Revenue</h4>
+                <p style="margin: 0 0 8px 0; color: #C9D1D9; font-size: 12px; font-weight: 600;">Core Maritime & Vessel Operations</p>
+                <p style="margin: 0; color: #8B949E; font-size: 12px; line-height: 1.4;">
+                    Generated directly from <b>Domestic and Foreign Vessels ship calls</b>. Includes port dues, berthing/dockage fees, cargo wharfage, pilotage, and vessel tonnage fees. Highly dependent on shipping schedules and global trade cycles.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    with rev_col2:
+        st.markdown(
+            """
+            <div style="background-color: #161B22; border-left: 4px solid #F0883E; border-top: 1px solid #30363D; border-right: 1px solid #30363D; border-bottom: 1px solid #30363D; padding: 14px 18px; border-radius: 8px; height: 100%;">
+                <h4 style="margin: 0 0 6px 0; color: #F0883E; font-size: 16px;">🏢 Non-Traditional Revenue</h4>
+                <p style="margin: 0 0 8px 0; color: #C9D1D9; font-size: 12px; font-weight: 600;">Ecozone Real Estate, Logistics & Value-Added Services</p>
+                <p style="margin: 0; color: #8B949E; font-size: 12px; line-height: 1.4;">
+                    Derived from commercial land assets and ecozone facilities. Includes <b>Lease of Contracts, Space Rentals, Container Yard Terminals, and other commercial operations</b>. Provides predictable, contractual long-term income.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-    # 2. Historical Revenue Chart
-    if df_hist is not None and not df_hist.empty:
-        try:
-            fig1 = render_historical_revenue_chart(
-                df=df_hist,
-                date_col="observation_date",
-                revenue_col="total_revenue",
-                monthly_target=2500000.0,
-                unit_scale=1e6
-            )
-            if fig1:
-                st.plotly_chart(
-                    fig1, 
-                    use_container_width=True, 
-                    config=get_executive_config() if "get_executive_config" in globals() else {}
-                )
-        except Exception as e:
-            st.error(f"Error rendering Historical Revenue Chart: {e}")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-        st.markdown("---")
+    st.markdown("### 1. Historical Revenue Breakdown")
+    
+    fig_hist = go.Figure()
+    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Traditional"], mode='lines+markers', name='Traditional Revenue (Ship Calls)', line=dict(color='#A371F7', width=2)))
+    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Non_Traditional"], mode='lines+markers', name='Non-Traditional Revenue (Leases/Rentals)', line=dict(color='#F0883E', width=2)))
+    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Collected_Revenue"], mode='lines+markers', name='Total Revenue Collected', line=dict(width=3, color='#58A6FF')))
+    
+    fig_hist.update_layout(
+        template="plotly_dark",
+        title="Monthly Revenue Collections by Stream (PhP)",
+        xaxis_title="Timeline",
+        yaxis_title="Revenue (PhP)",
+        height=380,
+        margin=dict(l=10, r=10, t=40, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    st.plotly_chart(fig_hist, use_container_width=True)
 
-        # 3. Revenue Breakdown Chart
-        try:
-            fig2 = render_revenue_breakdown_chart(
-                df=df_hist,
-                date_col="observation_date",
-                trad_col="traditional_rev",
-                nontrad_col="nontraditional_rev",
-                unit_scale=1e6
-            )
-            if fig2:
-                st.plotly_chart(
-                    fig2, 
-                    use_container_width=True, 
-                    config=get_executive_config() if "get_executive_config" in globals() else {}
-                )
-        except Exception as e:
-            st.error(f"Error rendering Revenue Breakdown Chart: {e}")
+    st.markdown("---")
 
-        st.markdown("---")
-    else:
-        st.warning("Historical dataset could not be loaded or is empty.")
+    st.markdown("### 2. Integrated Revenue Forecast Model (2026–2040)")
+    
+    col_param1, col_param2 = st.columns(2)
+    with col_param1:
+        base_growth = st.slider("Organic Baseline Annual Growth (%)", min_value=1.0, max_value=10.0, value=3.5, step=0.5)
+    with col_param2:
+        pap_multiplier = st.slider("PAPs Implementation Multiplier", min_value=1.0, max_value=2.5, value=1.4, step=0.1)
 
-    # 4. Forecast Chart
-    if df_forecast is not None and not df_forecast.empty:
-        milestones = {
-            2028: "Phase I PAPs Online",
-            2032: "Phase II Port Expansion",
-            2036: "Full Logistics Integration"
-        }
+    annual_2025_base = df_rev[df_rev["Date"].dt.year == 2025]["Collected_Revenue"].sum()
+    if annual_2025_base == 0:
+        annual_2025_base = df_rev["Collected_Revenue"].mean() * 12
+
+    years = list(range(2026, 2041))
+    
+    baseline_proj = []
+    masterplan_proj = []
+    
+    for y in years:
+        n = y - 2025
+        b_val = annual_2025_base * ((1 + (base_growth / 100)) ** n)
+        baseline_proj.append(b_val)
         
-        try:
-            fig3 = render_revenue_forecast_chart(
-                df=df_forecast,
-                year_col="fiscal_year",
-                bau_col="bau_projection",
-                masterplan_col="master_plan_val",
-                unit_scale=1e6,
-                milestones=milestones
-            )
-            if fig3:
-                st.plotly_chart(
-                    fig3, 
-                    use_container_width=True, 
-                    config=get_executive_config() if "get_executive_config" in globals() else {}
-                )
-        except Exception as e:
-            st.error(f"Error rendering Forecast Chart: {e}")
-    else:
-        st.warning("Forecast dataset could not be loaded or is empty.")
+        phase_mult = 1.20 if y <= 2028 else (1.55 if y <= 2031 else (2.00 if y <= 2035 else 2.40))
+        m_val = b_val * (1 + (phase_mult - 1) * pap_multiplier)
+        masterplan_proj.append(m_val)
+
+    df_forecast = pd.DataFrame({
+        "Year": years,
+        "Baseline (PhP Billion)": [v / 1e9 for v in baseline_proj],
+        "Master Plan Integrated (PhP Billion)": [v / 1e9 for v in masterplan_proj]
+    })
+
+    fig_fore = go.Figure()
+    fig_fore.add_trace(go.Scatter(x=df_forecast["Year"], y=df_forecast["Baseline (PhP Billion)"], mode='lines+markers', name='Business-As-Usual', line=dict(dash='dash', color='#8B949E')))
+    fig_fore.add_trace(go.Scatter(x=df_forecast["Year"], y=df_forecast["Master Plan Integrated (PhP Billion)"], mode='lines+markers', name='Master Plan Integrated Revenue', line=dict(width=3, color='#238636')))
+
+    fig_fore.update_layout(
+        template="plotly_dark",
+        title="Projected Annual Revenue Trajectory (PhP Billion)",
+        xaxis_title="Year",
+        yaxis_title="Annual Revenue (PhP Billion)",
+        height=400,
+        margin=dict(l=10, r=10, t=40, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
+    st.plotly_chart(fig_fore, use_container_width=True)
 
 # ==========================================
-# MODULE 6: SPATIAL MAP VIEWER (RESTORED MULTI-ZONE RENDERING)
+# MODULE 6: SPATIAL MAP VIEWER (PROTECTED)
 # ==========================================
 elif nav_selection == "Spatial Map Viewer":
     st.title("🗺 Spatial Development & Land Use Map Viewer")
@@ -784,75 +810,9 @@ elif nav_selection == "Spatial Map Viewer":
         components.iframe(src="https://www.openzonemap.com/map", height=650, scrolling=True)
 
     else:
-        master_geojson_path = "pfez_master_zoning.geojson"
-        geojson_files = sorted([f for f in os.listdir(".") if f.endswith(".geojson") and f != "pfez_master_zoning.geojson"])
+        geojson_files = sorted([f for f in os.listdir(".") if f.endswith(".geojson")])
         
-        # Scenario A: Master combined GeoJSON exists
-        if os.path.exists(master_geojson_path):
-            gdf_all = gpd.read_file(master_geojson_path)
-            zone_col = "ZONE_NAME" if "ZONE_NAME" in gdf_all.columns else ("Layer" if "Layer" in gdf_all.columns else gdf_all.columns[0])
-            available_zones = sorted(gdf_all[zone_col].dropna().unique().tolist())
-            
-            st.write("Select vector layers to display on the master map:")
-            selected_zones = st.multiselect(
-                "Active Zoning Layers",
-                options=available_zones,
-                default=available_zones
-            )
-
-            if selected_zones:
-                gdf_filtered = gdf_all[gdf_all[zone_col].isin(selected_zones)]
-                if gdf_filtered.crs is not None and gdf_filtered.crs != "EPSG:4326":
-                    gdf_filtered = gdf_filtered.to_crs(epsg=4326)
-                
-                centroid = gdf_filtered.geometry.unary_union.centroid
-                m = folium.Map(location=[centroid.y, centroid.x], zoom_start=14.5)
-                
-                folium.TileLayer(
-                    tiles="https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-                    attr="Esri World Street Map",
-                    name="Esri World Street Map"
-                ).add_to(m)
-
-                unique_sel = list(gdf_filtered[zone_col].unique())
-                color_map = {}
-                for idx, z_name in enumerate(unique_sel):
-                    hue = idx / max(len(unique_sel), 1)
-                    rgb = colorsys.hls_to_rgb(hue, 0.55, 0.85)
-                    color_map[z_name] = '#%02x%02x%02x' % (int(rgb[0]*255), int(rgb[1]*255), int(rgb[2]*255))
-
-                folium.GeoJson(
-                    gdf_filtered,
-                    style_function=lambda feature: {
-                        'fillColor': color_map.get(feature['properties'].get(zone_col), '#38BDF8'),
-                        'color': '#1E293B',
-                        'weight': 1.5,
-                        'fillOpacity': 0.65
-                    },
-                    tooltip=folium.GeoJsonTooltip(fields=[zone_col], aliases=["Zone:"])
-                ).add_to(m)
-
-                map_col, legend_col = st.columns([3, 1])
-                with map_col:
-                    st_folium(m, width="100%", height=560)
-                    
-                with legend_col:
-                    st.markdown("### 🗂 Zoning Layers Legend")
-                    for name, col in color_map.items():
-                        st.markdown(
-                            f"""
-                            <div style="display: flex; align-items: center; background-color: #161B22; border: 1px solid #30363D; padding: 8px 10px; border-radius: 6px; margin-bottom: 8px;">
-                                <span style="width: 14px; height: 14px; background-color: {col}; border: 1px solid #ffffff; display: inline-block; margin-right: 10px; border-radius: 3px; flex-shrink: 0;"></span>
-                                <span style="font-size: 12px; color: #FAFAFA; font-weight: 500;">{name}</span>
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
-            else:
-                st.info("Select at least one layer above to render the map.")
-
-        # Scenario B: Separate individual GeoJSON files per layer
-        elif geojson_files:
+        if geojson_files:
             st.write("Select vector layers to display on the master map:")
             selected_layers = st.multiselect(
                 "Active Zoning Layers",
@@ -887,9 +847,7 @@ elif nav_selection == "Spatial Map Viewer":
         else:
             st.warning("No `.geojson` files found in the directory.")
 
-# ==========================================
-# MODULE 7: M&E & RISK MATRIX (PCM ENHANCED)
-# ==========================================
+# MODULE 7: M&E & RISK MATRIX
 elif nav_selection == "M&E & Risk Matrix":
     st.title("🛡️ Monitoring & Evaluation (M&E) & Risk Matrix")
     st.markdown(
@@ -903,7 +861,6 @@ elif nav_selection == "M&E & Risk Matrix":
         "🔄 PCM Phasing & Stage-Gates"
     ])
 
-    # --- TAB 1: STRATEGIC RISK REGISTER ---
     with tab_risk:
         st.markdown("### Strategic Risk Identification & Assessment Matrix")
         
@@ -966,7 +923,6 @@ elif nav_selection == "M&E & Risk Matrix":
         ]
         df_risk = pd.DataFrame(risk_data)
 
-        # Highlight function for risk score
         def style_risk(val):
             if val == "CRITICAL":
                 return "background-color: #8B0000; color: white; font-weight: bold;"
@@ -1022,7 +978,6 @@ elif nav_selection == "M&E & Risk Matrix":
             fig_cat.update_layout(margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_cat, use_container_width=True)
 
-    # --- TAB 2: LOGICAL FRAMEWORK (LOGFRAME) ---
     with tab_logframe:
         st.markdown("### Master Plan Results & Evaluation Framework (Logframe)")
         
@@ -1072,7 +1027,6 @@ elif nav_selection == "M&E & Risk Matrix":
         df_me = pd.DataFrame(me_data)
         st.dataframe(df_me, use_container_width=True, height=350)
 
-    # --- TAB 3: PCM PHASING & STAGE-GATES ---
     with tab_pcm:
         st.markdown("### Project Cycle Management (PCM) Phasing Matrix")
         
