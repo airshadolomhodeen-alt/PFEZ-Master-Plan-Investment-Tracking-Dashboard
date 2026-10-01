@@ -163,28 +163,56 @@ def load_revenue_data():
     })
 
 
-def get_total_revenue_value(df):
-    """Calculates total revenue without altering any columns like TLS or BTO."""
-    if "Revenue" in df.columns:
-        return pd.to_numeric(df["Revenue"], errors="coerce").sum()
+def prepare_clean_time_series(df):
+    """Filters header texts and extracts clean numerical values for charts."""
+    clean_records = []
+    month_col = df.columns[0]
 
+    target_col = None
     for col in df.columns:
         col_str = str(col).upper()
         if any(
             k in col_str
-            for k in ["COLLECTED REVENUE", "REVENUE", "TOTAL REVENUE", "TLS"]
+            for k in ["COLLECTED REVENUE", "REVENUE", "TOTAL", "COLLECTED"]
         ):
-            return pd.to_numeric(df[col], errors="coerce").sum()
+            target_col = col
+            break
 
-    for col in df.columns:
-        if df[col].astype(str).str.upper().str.contains("COLLECTED").any():
-            return pd.to_numeric(df[col], errors="coerce").sum()
+    if target_col is None:
+        target_col = df.columns[-1]
 
-    numeric_df = df.apply(pd.to_numeric, errors="coerce")
-    valid_cols = numeric_df.dropna(how="all", axis=1)
-    if not valid_cols.empty:
-        return valid_cols.iloc[:, -1].sum()
+    for idx, row in df.iterrows():
+        month_val = str(row[month_col]).strip()
+        raw_rev = row[target_col]
 
+        rev_str = (
+            str(raw_rev)
+            .replace("PhP", "")
+            .replace(",", "")
+            .replace("₱", "")
+            .strip()
+        )
+
+        try:
+            val = float(rev_str)
+            if month_val.upper() not in [
+                "MONTH",
+                "NONE",
+                "NAN",
+                "COLLECTED REVENUE",
+            ]:
+                clean_records.append({"Month": month_val, "Revenue": val})
+        except ValueError:
+            continue
+
+    return pd.DataFrame(clean_records)
+
+
+def get_total_revenue_value(df):
+    """Calculates total revenue without altering original columns."""
+    clean_df = prepare_clean_time_series(df)
+    if not clean_df.empty:
+        return clean_df["Revenue"].sum()
     return 0.0
 
 
@@ -368,7 +396,7 @@ if nav_selection == "Dashboard Home":
         total_rev_val = get_total_revenue_value(df_rev)
         st.metric(
             label="Historical Revenue Baseline",
-            value=f"PhP {total_rev_val/1e9:.3f} Billion",
+            value=f"PhP {total_rev_val/1e6:.2f} Million",
             delta="Collection Total",
         )
 
@@ -520,31 +548,64 @@ if nav_selection == "Dashboard Home":
     with bot_col2:
         st.markdown("### Historical Revenue Time Series & Trend Analysis")
 
-        time_col = df_rev.columns[0]
-        val_col = (
-            df_rev.columns[-1] if len(df_rev.columns) > 1 else df_rev.columns[0]
-        )
+        clean_ts_df = prepare_clean_time_series(df_rev)
 
-        fig_ts = px.line(
-            df_rev,
-            x=time_col,
-            y=val_col,
-            title="Monthly Collection vs Trendline",
-            markers=True,
-        )
-        fig_ts.update_traces(
-            line_color="#1f77b4", marker=dict(size=8, color="#1f77b4")
-        )
-        fig_ts.update_layout(
-            template="plotly_dark",
-            height=250,
-            margin=dict(l=10, r=10, t=30, b=10),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            xaxis_title="Month",
-            yaxis_title="Revenue (PhP)",
-        )
-        st.plotly_chart(fig_ts, use_container_width=True)
+        if not clean_ts_df.empty:
+            fig_ts = px.line(
+                clean_ts_df,
+                x="Month",
+                y="Revenue",
+                title="Monthly Revenue Collections with Linear Trendline (PhP)",
+                markers=True,
+            )
+
+            y_vals = clean_ts_df["Revenue"].values
+            x_vals = np.arange(len(y_vals))
+
+            if len(y_vals) > 1:
+                m, c = np.polyfit(x_vals, y_vals, 1)
+                trendline_y = m * x_vals + c
+
+                fig_ts.add_trace(
+                    go.Scatter(
+                        x=clean_ts_df["Month"],
+                        y=trendline_y,
+                        mode="lines",
+                        name="Linear Trendline",
+                        line=dict(color="#FF4B4B", width=2, dash="dash"),
+                    )
+                )
+
+            fig_ts.update_traces(
+                selector=dict(mode="lines+markers"),
+                line_color="#58A6FF",
+                marker=dict(size=6, color="#58A6FF"),
+            )
+            fig_ts.update_layout(
+                template="plotly_dark",
+                height=270,
+                margin=dict(l=10, r=10, t=35, b=10),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                xaxis_title="Month",
+                yaxis_title="Revenue (PhP)",
+                xaxis=dict(
+                    tickangle=-45,
+                    tickfont=dict(size=9),
+                    type="category",
+                ),
+                yaxis=dict(gridcolor="#30363D"),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1,
+                ),
+            )
+            st.plotly_chart(fig_ts, use_container_width=True)
+        else:
+            st.info("No numerical revenue data available to render trendline.")
 
         # --- ADD VALUE TAB DIRECTLY BELOW REVENUE TIME SERIES ---
         with st.expander("➕ Add Value / New Entry", expanded=True):
@@ -563,9 +624,10 @@ if nav_selection == "Dashboard Home":
 
                 if submit_btn:
                     if new_period.strip():
-                        new_row = {
-                            col: None for col in df_rev.columns
-                        }  # Maintain full column structure
+                        time_col = df_rev.columns[0]
+                        val_col = df_rev.columns[-1]
+
+                        new_row = {col: None for col in df_rev.columns}
                         new_row[time_col] = new_period
                         new_row[val_col] = new_val
 
@@ -784,25 +846,55 @@ elif nav_selection == "Manpower Justification":
 elif nav_selection == "Revenue Analytics & Forecasting":
     st.title("📈 Revenue Collection Analytics & Master Plan Forecasting")
 
-    st.markdown("### 1. Revenue Collection Overview")
-    time_col = df_rev.columns[0]
-    val_col = df_rev.columns[-1] if len(df_rev.columns) > 1 else df_rev.columns[0]
+    st.markdown("### 1. Historical Revenue Collections & Trend Analysis")
 
-    fig_hist = px.line(
-        df_rev,
-        x=time_col,
-        y=val_col,
-        title="Monthly Revenue Collections (PhP)",
-        markers=True,
-    )
-    fig_hist.update_layout(
-        template="plotly_dark",
-        height=380,
-        margin=dict(l=10, r=10, t=40, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-    )
-    st.plotly_chart(fig_hist, use_container_width=True)
+    clean_ts_df = prepare_clean_time_series(df_rev)
+
+    if not clean_ts_df.empty:
+        fig_hist = px.line(
+            clean_ts_df,
+            x="Month",
+            y="Revenue",
+            title="Monthly Revenue Collections with Linear OLS Trendline (PhP)",
+            markers=True,
+        )
+
+        y_vals = clean_ts_df["Revenue"].values
+        x_vals = np.arange(len(y_vals))
+
+        if len(y_vals) > 1:
+            m, c = np.polyfit(x_vals, y_vals, 1)
+            trendline_y = m * x_vals + c
+
+            fig_hist.add_trace(
+                go.Scatter(
+                    x=clean_ts_df["Month"],
+                    y=trendline_y,
+                    mode="lines",
+                    name="Linear Trendline",
+                    line=dict(color="#FF4B4B", width=2, dash="dash"),
+                )
+            )
+
+        fig_hist.update_traces(
+            selector=dict(mode="lines+markers"),
+            line_color="#58A6FF",
+            marker=dict(size=7, color="#58A6FF"),
+        )
+        fig_hist.update_layout(
+            template="plotly_dark",
+            height=400,
+            margin=dict(l=10, r=10, t=40, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis_title="Month",
+            yaxis_title="Revenue (PhP)",
+            xaxis=dict(tickangle=-45, type="category"),
+            yaxis=dict(gridcolor="#30363D"),
+        )
+        st.plotly_chart(fig_hist, use_container_width=True)
+    else:
+        st.info("No numerical revenue records found in Excel dataset.")
 
 # ==========================================
 # 6. SPATIAL MAP VIEWER & OPEN ZONE MAP
