@@ -149,42 +149,22 @@ def load_masterplan_data():
         })
 
 
-# --- LOAD REVENUE DATA PRESERVING EXACT STRUCTURE (TLS, BTO, ETC.) ---
+# --- LOAD REVENUE DATA PRESERVING EXACT EXCEL STRUCTURE ---
 def load_revenue_data():
     if os.path.exists(EXCEL_FILE):
         try:
-            # Read exact structure without column stripping/renaming
             return pd.read_excel(EXCEL_FILE)
         except Exception:
             pass
 
     return pd.DataFrame({
-        "Month": [
-            "Jan 2026",
-            "Feb 2026",
-            "Mar 2026",
-            "Apr 2026",
-            "May 2026",
-            "Jun 2026",
-            "Jul 2026",
-        ],
-        "Revenue": [
-            1500000.0,
-            1800000.0,
-            2100000.0,
-            1900000.0,
-            2300000.0,
-            2500000.0,
-            2800000.0,
-        ],
+        "Month/Year": ["January (2026)", "February (2026)", "March (2026)"],
+        "COLLECTED REVENUE": [1500000.0, 1800000.0, 2100000.0],
     })
 
 
 def get_total_revenue_value(df):
-    """Dynamically calculates total revenue from the sheet without modifying
-
-    or dropping any columns (TLS, BTO, etc.).
-    """
+    """Calculates total revenue without altering any columns like TLS or BTO."""
     if "Revenue" in df.columns:
         return pd.to_numeric(df["Revenue"], errors="coerce").sum()
 
@@ -196,7 +176,6 @@ def get_total_revenue_value(df):
         ):
             return pd.to_numeric(df[col], errors="coerce").sum()
 
-    # Search within dataframe values if multi-level header exists
     for col in df.columns:
         if df[col].astype(str).str.upper().str.contains("COLLECTED").any():
             return pd.to_numeric(df[col], errors="coerce").sum()
@@ -270,16 +249,6 @@ st.sidebar.markdown(
     <div style='font-size: 11px; color: #8B949E; margin-top: 4px; line-height: 1.3;'>
         📱 0975-256-9055 / 0929-336-7787<br>
         ✉ airsadolomodin@gmail.com
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown(
-    """
-    <div style='font-size: 10px; color: #8B949E; line-height: 1.3;'>
-    <b>Disclaimer:</b> Strategic decision-support tool built for BEZA infrastructure resource allocation and workforce expansion evaluation.
     </div>
     """,
     unsafe_allow_html=True,
@@ -551,7 +520,6 @@ if nav_selection == "Dashboard Home":
     with bot_col2:
         st.markdown("### Historical Revenue Time Series & Trend Analysis")
 
-        # Safely extract line chart data without altering df_rev
         time_col = df_rev.columns[0]
         val_col = (
             df_rev.columns[-1] if len(df_rev.columns) > 1 else df_rev.columns[0]
@@ -578,28 +546,40 @@ if nav_selection == "Dashboard Home":
         )
         st.plotly_chart(fig_ts, use_container_width=True)
 
-    st.markdown("---")
+        # --- ADD VALUE TAB DIRECTLY BELOW REVENUE TIME SERIES ---
+        with st.expander("➕ Add Value / New Entry", expanded=True):
+            with st.form("add_revenue_form", clear_on_submit=True):
+                c1, c2 = st.columns(2)
+                with c1:
+                    new_period = st.text_input(
+                        "Period / Month", placeholder="e.g. Month 39 or Jan 2027"
+                    )
+                with c2:
+                    new_val = st.number_input(
+                        "Revenue Amount (PhP)", min_value=0.0, step=10000.0
+                    )
 
-    st.subheader("⚙️ Manage Historical Revenue Data")
-    st.caption(
-        "Directly edit cells in the table below, click **'+'** at the bottom to add new entries, "
-        "or select rows and press **Delete** on your keyboard. Click **Save Excel Changes** when done."
-    )
+                submit_btn = st.form_submit_button("➕ Add Entry to Excel")
 
-    edited_df = st.data_editor(
-        df_rev,
-        num_rows="dynamic",
-        use_container_width=True,
-        key="revenue_excel_editor",
-    )
+                if submit_btn:
+                    if new_period.strip():
+                        new_row = {
+                            col: None for col in df_rev.columns
+                        }  # Maintain full column structure
+                        new_row[time_col] = new_period
+                        new_row[val_col] = new_val
 
-    if st.button("💾 Save Excel Changes", type="primary"):
-        try:
-            edited_df.to_excel(EXCEL_FILE, index=False)
-            st.success("`REVENUE.xlsx` updated successfully!")
-            st.rerun()
-        except Exception as err:
-            st.error(f"Failed to save changes: {err}")
+                        updated_df = pd.concat(
+                            [df_rev, pd.DataFrame([new_row])], ignore_index=True
+                        )
+                        try:
+                            updated_df.to_excel(EXCEL_FILE, index=False)
+                            st.success(f"Added {new_period}: PhP {new_val:,.2f}")
+                            st.rerun()
+                        except Exception as err:
+                            st.error(f"Error updating file: {err}")
+                    else:
+                        st.warning("Please enter a valid period name.")
 
 # ==========================================
 # 2. INVESTMENT PHASING VIEW (PHASES 1 TO 4)
