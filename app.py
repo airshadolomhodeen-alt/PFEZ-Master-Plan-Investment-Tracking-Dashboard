@@ -151,34 +151,59 @@ def load_masterplan_data():
 
 # --- LOAD/INITIALIZE REVENUE DATA FROM REVENUE.xlsx ---
 def load_revenue_data():
+    df = None
     if os.path.exists(EXCEL_FILE):
         try:
-            return pd.read_excel(EXCEL_FILE)
+            df = pd.read_excel(EXCEL_FILE)
         except Exception:
             pass
 
-    df_default = pd.DataFrame({
-        "Month": [
-            "Jan 2026",
-            "Feb 2026",
-            "Mar 2026",
-            "Apr 2026",
-            "May 2026",
-            "Jun 2026",
-            "Jul 2026",
-        ],
-        "Revenue": [
-            1500000.0,
-            1800000.0,
-            2100000.0,
-            1900000.0,
-            2300000.0,
-            2500000.0,
-            2800000.0,
-        ],
-    })
-    df_default.to_excel(EXCEL_FILE, index=False)
-    return df_default
+    if df is None or df.empty:
+        df = pd.DataFrame({
+            "Month": [
+                "Jan 2026",
+                "Feb 2026",
+                "Mar 2026",
+                "Apr 2026",
+                "May 2026",
+                "Jun 2026",
+                "Jul 2026",
+            ],
+            "Revenue": [
+                1500000.0,
+                1800000.0,
+                2100000.0,
+                1900000.0,
+                2300000.0,
+                2500000.0,
+                2800000.0,
+            ],
+        })
+        try:
+            df.to_excel(EXCEL_FILE, index=False)
+        except Exception:
+            pass
+
+    # Clean & normalize column names
+    df.columns = [str(c).strip() for c in df.columns]
+    
+    # Rename case-insensitive matches to standard names
+    col_map = {}
+    for c in df.columns:
+        if c.lower() == "month":
+            col_map[c] = "Month"
+        elif c.lower() in ["revenue", "amount", "collections", "collection"]:
+            col_map[c] = "Revenue"
+    df = df.rename(columns=col_map)
+
+    # Fallback missing column checks
+    if "Month" not in df.columns:
+        df["Month"] = [f"Period {i+1}" for i in range(len(df))]
+    if "Revenue" not in df.columns:
+        df["Revenue"] = 0.0
+
+    df["Revenue"] = pd.to_numeric(df["Revenue"], errors="coerce").fillna(0.0)
+    return df
 
 
 df_master = load_masterplan_data()
@@ -666,7 +691,7 @@ elif nav_selection == "Master Plan Projects Directory":
     df_filtered = df_master[
         (df_master["Phase"].isin(selected_phases))
         & (df_master["SECTOR"].isin(selected_sectors))
-        & (df_master["CATEGORY"].isin(selected_cats))
+        & (df_filtered_cats := df_master["CATEGORY"].isin(selected_cats))
     ]
 
     st.markdown(
