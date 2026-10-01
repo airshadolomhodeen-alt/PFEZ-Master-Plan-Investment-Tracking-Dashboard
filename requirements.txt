@@ -1,9 +1,7 @@
 streamlit
 pandas
 geopandas
-plotly
-shapely
-pyproj
-pydeck
 folium
 streamlit-folium
+plotly
+openpyxl
