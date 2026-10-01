@@ -984,7 +984,7 @@ elif nav_selection == "M&E & Risk Matrix":
         me_data = [
             {
                 "Level": "1. Goal / Impact",
-                "Objectives & Key Performance Indicators", "Transform PFEZ into a sustainable regional economic hub in BARMM.",
+                "Objectives & Key Performance Indicators": "Transform PFEZ into a sustainable regional economic hub in BARMM.",
                 "Baseline (2024–2026)": "Baseline Port Operations",
                 "Target (2040)": "PhP 8.524B Infrastructure Capitalized; 15,000 Direct/Indirect Jobs",
                 "Data Source / Verification": "PSA & BEZA Economic Reports",
