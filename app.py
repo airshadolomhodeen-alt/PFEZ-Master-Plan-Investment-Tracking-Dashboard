@@ -1,1118 +1,455 @@
-import os
-import json
-import re
-import colorsys
 import numpy as np
 import pandas as pd
-import geopandas as gpd
-import streamlit as st
-import folium
-from streamlit_folium import st_folium
-import plotly.express as px
 import plotly.graph_objects as go
-import streamlit.components.v1 as components
+import streamlit as st
 
 # ==========================================
-# BASE DIRECTORY PATH RESOLUTION
+# REUSABLE VISUALIZATION DESIGN SYSTEM
 # ==========================================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# ==========================================
-# 1. PAGE CONFIGURATION & EXECUTIVE STYLING
-# ==========================================
-st.set_page_config(
-    page_title="PFEZ Master Development Plan & Technical Capacity Dashboard",
-    page_icon="⚓",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+EXECUTIVE_COLORS = {
+    "paper_bg": "#0B0E14",
+    "plot_bg": "#0F141D",
+    "grid": "#2B3245",
+    "actual": "#38BDF8",
+    "trend": "#10B981",
+    "ma": "#F59E0B",
+    "target": "#EF4444",
+    "traditional": "#A855F7",
+    "nontraditional": "#F97316",
+    "bau": "#94A3B8",
+    "masterplan": "#10B981",
+    "stat_band": "rgba(59, 130, 246, 0.08)",
+    "stat_line": "rgba(96, 165, 250, 0.4)",
+    "gap_fill": "rgba(16, 185, 129, 0.12)",
+    "text": "#F3F4F6",
+    "subtext": "#9CA3AF"
+}
 
-st.markdown(
-    """
-    <style>
-        /* Base Backgrounds */
-        .main { background-color: #0D1117; }
-        .block-container { padding-top: 0.8rem; padding-bottom: 1.5rem; padding-left: 1.5rem; padding-right: 1.5rem; }
-        h1, h2, h3, h4 { color: #F0F6FC; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
-        
-        /* Metric Styling */
-        div[data-testid="stMetric"] {
-            background-color: #161B22;
-            border: 1px solid #30363D;
-            padding: 14px 18px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        div[data-testid="stMetric"] label {
-            color: #8B949E !important;
-            font-size: 13px !important;
-            font-weight: 500 !important;
-        }
-        div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-            color: #58A6FF !important;
-            font-size: 22px !important;
-            font-weight: 700 !important;
-        }
 
-        /* Callout Box */
-        .callout-box {
-            background: linear-gradient(135deg, #161B22 0%, #1F242C 100%);
-            border-left: 4px solid #58A6FF;
-            border-top: 1px solid #30363D;
-            border-right: 1px solid #30363D;
-            border-bottom: 1px solid #30363D;
-            padding: 16px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        /* Phase Card Box */
-        .phase-card {
-            background-color: #161B22;
-            border: 1px solid #30363D;
-            border-radius: 8px;
-            padding: 14px;
-            text-align: center;
-        }
-
-        /* Mobile Screen Responsiveness */
-        @media (max-width: 768px) {
-            .block-container { padding-left: 0.5rem; padding-right: 0.5rem; }
-            div[data-testid="column"] { width: 100% !important; flex: 100% !important; min-width: 100% !important; margin-bottom: 10px; }
-        }
-    </style>
-""",
-    unsafe_allow_html=True,
-)
-
-# ==========================================
-# 2. DATA LOADERS & DATA PIPELINE
-# ==========================================
-@st.cache_data
-def load_masterplan_data():
-    file_path = os.path.join(BASE_DIR, "MASTERPLAN PROJECTS.csv")
-    if os.path.exists(file_path):
-        try:
-            df = pd.read_csv(file_path, encoding="latin1")
-        except Exception:
-            df = pd.read_csv(file_path, encoding="cp1252")
-            
-        df.columns = [c.strip() for c in df.columns]
-        df['SECTOR'] = df['SECTOR'].astype(str).str.strip()
-        df['CATEGORY'] = df['CATEGORY'].astype(str).str.strip()
-        
-        def parse_amount(val):
-            if pd.isna(val):
-                return 0.0
-            s = str(val).replace("PhP", "").strip()
-            parts = s.split('.')
-            if len(parts) > 2:
-                s = parts[0] + '.' + ''.join(parts[1:])
-            s = s.replace(",", "").strip()
-            try:
-                return float(s)
-            except:
-                return 0.0
-
-        df['Cost_PhP'] = df['ESTIMATE AMOUNT'].apply(parse_amount)
-        df['Cost_PhP_B'] = df['Cost_PhP'] / 1e9
-
-        # Phase & PCM Assignment Mapping
-        def assign_phase(p_no):
-            try:
-                p_int = int(p_no)
-            except:
-                p_int = 1
-            if p_int <= 39:
-                return "Phase 1 (2026–2030)"
-            elif p_int <= 71:
-                return "Phase 2 (2029–2035)"
-            elif p_int <= 87:
-                return "Phase 3 (2032–2038)"
-            else:
-                return "Phase 4 (2035–2040)"
-
-        def assign_pcm_stage(p_no):
-            try:
-                p_int = int(p_no)
-            except:
-                p_int = 1
-            if p_int <= 39:
-                return "5. Implementation & Monitoring"
-            elif p_int <= 71:
-                return "3. Formulation & Design"
-            elif p_int <= 87:
-                return "2. Identification"
-            else:
-                return "1. Programming"
-
-        df['Phase'] = df['PROJECT NO.'].apply(assign_phase)
-        df['PCM Stage'] = df['PROJECT NO.'].apply(assign_pcm_stage)
-        return df
-    else:
-        p_list = list(range(1, 96))
-        phases = ["Phase 1 (2026–2030)"]*39 + ["Phase 2 (2029–2035)"]*32 + ["Phase 3 (2032–2038)"]*16 + ["Phase 4 (2035–2040)"]*8
-        pcm_stages = ["5. Implementation & Monitoring"]*39 + ["3. Formulation & Design"]*32 + ["2. Identification"]*16 + ["1. Programming"]*8
-        return pd.DataFrame({
-            "PROJECT NO.": p_list,
-            "PROJECT TITLE": [f"Sample Master Plan PAP {i}" for i in p_list],
-            "SECTOR": ["Infrastructure"] * 21 + ["Institutional"] * 24 + ["Economic"] * 25 + ["Social"] * 13 + ["Environmental"] * 12,
-            "CATEGORY": ["Infrastructure Preparation"] * 95,
-            "Cost_PhP": [89724294.0] * 95,
-            "Cost_PhP_B": [0.0897] * 95,
-            "Phase": phases,
-            "PCM Stage": pcm_stages
-        })
-
-@st.cache_data
-def load_revenue_data():
-    file_path = os.path.join(BASE_DIR, "REVENUE.xlsx")
-    if os.path.exists(file_path):
-        df_raw = pd.read_excel(file_path, sheet_name=0, engine="openpyxl")
-        clean_rows = []
-        for idx in range(2, min(32, len(df_raw))):
-            row = df_raw.iloc[idx]
-            m_str = str(row.iloc[0]).strip() if not pd.isna(row.iloc[0]) else f"Month {idx-1}"
-            
-            def parse_num(val):
-                if pd.isna(val):
-                    return 0.0
-                s = str(val).replace("₱", "").replace(",", "").replace("\n", "").strip()
-                try:
-                    return float(s)
-                except:
-                    return 0.0
-
-            trad = parse_num(row.iloc[2]) if len(row) > 2 else 0.0
-            non_trad = parse_num(row.iloc[4]) if len(row) > 4 else 0.0
-            bto = parse_num(row.iloc[6]) if len(row) > 6 else 0.0
-            bir = parse_num(row.iloc[8]) if len(row) > 8 else 0.0
-            collected = parse_num(row.iloc[10]) if len(row) > 10 else (trad + non_trad + bto + bir)
-            
-            clean_rows.append({
-                "Month_Raw": m_str,
-                "Traditional": trad,
-                "Non_Traditional": non_trad,
-                "BTO_Remittance": bto,
-                "BIR_Remittance": bir,
-                "Collected_Revenue": collected
-            })
-        
-        df_clean = pd.DataFrame(clean_rows)
-        date_list = pd.date_range(start="2024-01-01", periods=len(df_clean), freq="MS")
-        df_clean["Date"] = date_list
-        return df_clean
-    else:
-        dates = pd.date_range(start="2024-01-01", periods=30, freq="MS")
-        return pd.DataFrame({
-            "Date": dates,
-            "Traditional": 1e6,
-            "Non_Traditional": 1e6,
-            "BTO_Remittance": 2e6,
-            "BIR_Remittance": 2e5,
-            "Collected_Revenue": 2.2e6
-        })
-
-df_master = load_masterplan_data()
-df_rev = load_revenue_data()
-
-# ==========================================
-# 3. TOP EXECUTIVE BANNER
-# ==========================================
-st.markdown(
-    """
-    <div style="background-color: #161B22; padding: 18px 24px; border-radius: 8px; border: 1px solid #30363D; text-align: left; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <div>
-            <span style="background-color: #238636; color: #FFFFFF; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 12px; letter-spacing: 0.5px;">EXECUTIVE STRATEGY BRIEF FOR EVALUATORS</span>
-            <h2 style="color: #58A6FF; margin: 6px 0 2px 0; font-size: 22px; font-weight: 700;">POLLOC FREEPORT AND ECONOMIC ZONE (PFEZ)</h2>
-            <p style="color: #8B949E; margin: 0; font-size: 13px;">Master Development Plan Implementation & Technical Infrastructure Manpower Framework</p>
-        </div>
-        <div style="text-align: right;">
-            <span style="font-size: 11px; color: #8B949E;">Authority:</span><br>
-            <span style="font-size: 12px; color: #C9D1D9; font-weight: 600;">Bangsamoro Economic Zone Authority (BEZA)</span>
-        </div>
-    </div>
-""",
-    unsafe_allow_html=True,
-)
-
-# ==========================================
-# 4. SIDEBAR NAVIGATION & BRANDING
-# ==========================================
-st.sidebar.image("https://img.icons8.com/color/96/port.png", width=45)
-st.sidebar.title("PFEZ Navigation")
-nav_selection = st.sidebar.radio(
-    "Select Module",
-    [
-        "Dashboard Home",
-        "Investment Phasing (Phases 1–4)",
-        "Master Plan Projects Directory",
-        "Manpower Justification",
-        "Revenue Analytics & Forecasting",
-        "Spatial Map Viewer",
-        "M&E & Risk Matrix",
-    ],
-)
-
-st.sidebar.markdown("---")
-st.sidebar.info(
-    f"**Project Portfolio:** PFEZ Master Plan\n\n**Total PAPs:** {len(df_master)} Projects\n\n**Total Estimated Capital:** PhP {df_master['Cost_PhP_B'].sum():.3f} Billion\n\n**Target Horizon:** 2026–2040 (4 Phases)"
-)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("### Project Lead & Author")
-
-profile_img_path = os.path.join(BASE_DIR, "AirSad.png")
-if os.path.exists(profile_img_path):
-    st.sidebar.image(profile_img_path, width=120)
-else:
-    st.sidebar.image("https://img.icons8.com/fluency/96/user-male-circle.png", width=75)
-
-st.sidebar.markdown(
-    """
-    <div style='font-size: 11px; color: #FFFFFF; font-weight: bold; margin-top: 8px;'>
-        ENGR. AIRSAD R. OLOMODIN, MBA, CBE
-    </div>
-    <div style='font-size: 11px; color: #8B949E; margin-top: 4px; line-height: 1.3;'>
-        📱 0975-256-9055 / 0929-336-7787<br>
-        ✉ airsadolomodin@gmail.com
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown(
-    """
-    <div style='font-size: 10px; color: #8B949E; line-height: 1.3;'>
-    <b>Disclaimer:</b> Strategic decision-support tool built for BEZA infrastructure resource allocation and workforce expansion evaluation.
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# ==========================================
-# 5. MAP RENDERER HELPER
-# ==========================================
-def render_multi_layer_map(selected_files, height=310):
-    all_gdfs = []
-    legend_items = []
-    total_files = max(len(selected_files), 1)
-    
-    m = folium.Map(location=[7.34, 124.28], zoom_start=14.5, tiles=None)
-    esri_tile_url = "https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
-    
-    folium.TileLayer(
-        tiles=esri_tile_url,
-        attr="Esri",
-        name="Esri World Street Map",
-        control=True,
-        max_zoom=19,
-    ).add_to(m)
-    
-    for idx, file_name in enumerate(selected_files):
-        try:
-            full_path = os.path.join(BASE_DIR, file_name) if not os.path.isabs(file_name) else file_name
-            gdf = gpd.read_file(full_path)
-            display_name = os.path.basename(file_name).replace(".geojson", "").replace("_", " ").title()
-            
-            hue = idx / total_files
-            rgb_float = colorsys.hls_to_rgb(hue, 0.55, 0.85)
-            hex_color = '#%02x%02x%02x' % (
-                int(rgb_float[0] * 255),
-                int(rgb_float[1] * 255),
-                int(rgb_float[2] * 255),
-            )
-            rgb_css = f"rgba({int(rgb_float[0]*255)}, {int(rgb_float[1]*255)}, {int(rgb_float[2]*255)}, 0.85)"
-            legend_items.append((display_name, rgb_css))
-            
-            if not gdf.empty:
-                if gdf.crs is not None and gdf.crs != "EPSG:4326":
-                    gdf = gdf.to_crs(epsg=4326)
-                all_gdfs.append(gdf)
-                
-                folium.GeoJson(
-                    gdf,
-                    name=display_name,
-                    style_function=lambda x, color=hex_color: {
-                        'fillColor': color,
-                        'color': '#333333',
-                        'weight': 1.5,
-                        'fillOpacity': 0.75,
-                    },
-                ).add_to(m)
-        except Exception:
-            pass
-
-    if all_gdfs:
-        combined_gdf = pd.concat(all_gdfs, ignore_index=True)
-        centroid = combined_gdf.geometry.unary_union.centroid
-        m.location = [centroid.y, centroid.x]
-        
-    st_folium(m, width="100%", height=height)
-    return legend_items
-
-# Helper function to find geojson files
-def get_geojson_files():
-    return sorted([f for f in os.listdir(BASE_DIR) if f.lower().endswith(".geojson")])
-
-# ==========================================
-# MODULE 1: DASHBOARD HOME VIEW
-# ==========================================
-if nav_selection == "Dashboard Home":
-
-    st.markdown(
-        f"""
-        <div class="callout-box">
-            <div style="display: flex; align-items: flex-start; gap: 12px;">
-                <span style="font-size: 24px;">🏗</span>
-                <div>
-                    <h4 style="margin: 0 0 4px 0; color: #58A6FF; font-size: 15px;">STRATEGIC JUSTIFICATION FOR TECHNICAL ENGINEERING MANPOWER EXPANSION</h4>
-                    <p style="margin: 0; color: #C9D1D9; font-size: 12px; line-height: 1.5;">
-                        The PFEZ Master Development Plan commits <b>PhP {df_master['Cost_PhP_B'].sum():.3f} Billion</b> across <b>{len(df_master)} Programs and Projects (PAPs)</b> structured into <b>4 Implementation Phases (2026–2040)</b>. Executing <b>Phase 1 (39 Immediate PAPs)</b> requires technical reinforcement: <b>one Engineer V, one Engineer III, and two Engineer I positions</b>. Without direct engineering oversight, project execution delays threaten the foundational works and projected revenue trajectory.
-                    </p>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+def apply_executive_theme(fig: go.Figure, title: str, subtitle: str = "") -> go.Figure:
+    """Applies global executive dark theme styling to a Plotly figure."""
+    full_title = (
+        f"<b>{title}</b><br><span style='font-size: 12px; color: {EXECUTIVE_COLORS['subtext']};'>"
+        f"{subtitle}</span>" if subtitle else f"<b>{title}</b>"
     )
-
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        st.metric(label="Total Capital Budget", value=f"PhP {df_master['Cost_PhP_B'].sum():.3f} Billion", delta=f"{len(df_master)} Official PAPs Across 4 Phases")
-    with k2:
-        p1_cost_b = df_master[df_master['Phase'] == 'Phase 1 (2026–2030)']['Cost_PhP_B'].sum()
-        st.metric(label="Phase 1 Immediate Budget", value=f"PhP {p1_cost_b:.3f} Billion", delta="39 Immediate Deliverables")
-    with k3:
-        st.metric(label="Engineering Request", value="4 Positions", delta="Engineer V, III, and two I")
-    with k4:
-        st.metric(label="Historical Revenue Baseline", value=f"PhP {df_rev['Collected_Revenue'].sum()/1e9:.3f} Billion", delta="2024–2026 Collection")
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    st.markdown("### 🎯 Evaluator Bull's Eye View: Phase 1 to Phase 4 Implementation Roadmap")
     
-    phase_summary = df_master.groupby('Phase').agg(
-        PAPs_Count=('PROJECT NO.', 'count'),
-        Total_Budget_B=('Cost_PhP_B', 'sum')
-    ).reset_index()
-
-    p_col1, p_col2, p_col3, p_col4 = st.columns(4)
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor=EXECUTIVE_COLORS["paper_bg"],
+        plot_bgcolor=EXECUTIVE_COLORS["plot_bg"],
+        title=dict(
+            text=full_title,
+            font=dict(family="Inter, -apple-system, sans-serif", size=18, color=EXECUTIVE_COLORS["text"]),
+            x=0,
+            xanchor="left",
+            y=0.96,
+            yanchor="top"
+        ),
+        margin=dict(l=50, r=30, t=90, b=50),
+        font=dict(family="Inter, -apple-system, sans-serif", color=EXECUTIVE_COLORS["text"]),
+        hoverlabel=dict(
+            bgcolor="#1E293B",
+            font_size=12,
+            font_family="Inter, -apple-system, sans-serif"
+        ),
+        autosize=True
+    )
     
-    with p_col1:
-        p1_m = phase_summary[phase_summary['Phase'].str.contains('Phase 1')]
-        p1_val = p1_m['Total_Budget_B'].values[0] if not p1_m.empty else 0.0
-        p1_cnt = p1_m['PAPs_Count'].values[0] if not p1_m.empty else 0
-        st.markdown(
-            f"""
-            <div class="phase-card" style="border-top: 4px solid #58A6FF;">
-                <span style="background-color: #1F6FE5; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 1 (2026–2030)</span>
-                <h3 style="color: #58A6FF; margin: 8px 0 2px 0; font-size: 18px;">PhP {p1_val:,.3f} Billion</h3>
-                <p style="color: #8B949E; margin: 0; font-size: 11px;"><b>{p1_cnt} PAPs</b> | Institutional Setup, BOSS & Baselines</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    with p_col2:
-        p2_m = phase_summary[phase_summary['Phase'].str.contains('Phase 2')]
-        p2_val = p2_m['Total_Budget_B'].values[0] if not p2_m.empty else 0.0
-        p2_cnt = p2_m['PAPs_Count'].values[0] if not p2_m.empty else 0
-        st.markdown(
-            f"""
-            <div class="phase-card" style="border-top: 4px solid #F0883E;">
-                <span style="background-color: #D25D11; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 2 (2029–2035)</span>
-                <h3 style="color: #F0883E; margin: 8px 0 2px 0; font-size: 18px;">PhP {p2_val:,.3f} Billion</h3>
-                <p style="color: #8B949E; margin: 0; font-size: 11px;"><b>{p2_cnt} PAPs</b> | Container Yard & Halal Processing Hub</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    with p_col3:
-        p3_m = phase_summary[phase_summary['Phase'].str.contains('Phase 3')]
-        p3_val = p3_m['Total_Budget_B'].values[0] if not p3_m.empty else 0.0
-        p3_cnt = p3_m['PAPs_Count'].values[0] if not p3_m.empty else 0
-        st.markdown(
-            f"""
-            <div class="phase-card" style="border-top: 4px solid #A371F7;">
-                <span style="background-color: #8957E5; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 3 (2032–2038)</span>
-                <h3 style="color: #A371F7; margin: 8px 0 2px 0; font-size: 18px;">PhP {p3_val:,.3f} Billion</h3>
-                <p style="color: #8B949E; margin: 0; font-size: 11px;"><b>{p3_cnt} PAPs</b> | Wharf Extension & Land Reclamation</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    with p_col4:
-        p4_m = phase_summary[phase_summary['Phase'].str.contains('Phase 4')]
-        p4_val = p4_m['Total_Budget_B'].values[0] if not p4_m.empty else 0.0
-        p4_cnt = p4_m['PAPs_Count'].values[0] if not p4_m.empty else 0
-        st.markdown(
-            f"""
-            <div class="phase-card" style="border-top: 4px solid #238636;">
-                <span style="background-color: #238636; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 4 (2035–2040)</span>
-                <h3 style="color: #2EA043; margin: 8px 0 2px 0; font-size: 18px;">PhP {p4_val:,.3f} Billion</h3>
-                <p style="color: #8B949E; margin: 0; font-size: 11px;"><b>{p4_cnt} PAPs</b> | IT Park & Eco-Tourism Development</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    c_col1, c_col2 = st.columns(2)
+    fig.update_xaxes(
+        showgrid=True,
+        gridcolor=EXECUTIVE_COLORS["grid"],
+        gridwidth=1,
+        tickfont=dict(size=11, color=EXECUTIVE_COLORS["subtext"]),
+        title_font=dict(size=12, color=EXECUTIVE_COLORS["subtext"]),
+        zeroline=False
+    )
     
-    with c_col1:
-        fig_phase = px.bar(
-            phase_summary,
-            x="Phase",
-            y="Total_Budget_B",
-            text_auto=".3f",
-            title="Capital Expenditure Allocation by Implementation Phase (PhP Billion)",
-            template="plotly_dark",
-            height=330,
-            color="Phase",
-            color_discrete_sequence=["#58A6FF", "#F0883E", "#A371F7", "#238636"]
-        )
-        fig_phase.update_layout(
-            margin=dict(l=10, r=10, t=40, b=10),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            yaxis_title="PhP Billion",
-            showlegend=False
-        )
-        st.plotly_chart(fig_phase, use_container_width=True)
-
-    with c_col2:
-        sector_agg = df_master.groupby('SECTOR')['Cost_PhP_B'].sum().reset_index()
-        fig_sec = px.pie(
-            sector_agg,
-            names="SECTOR",
-            values="Cost_PhP_B",
-            title="Capital Budget Distribution across Sectors",
-            hole=0.45,
-            template="plotly_dark",
-            height=330,
-            color_discrete_sequence=px.colors.qualitative.Bold
-        )
-        fig_sec.update_layout(
-            margin=dict(l=10, r=10, t=40, b=10),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)"
-        )
-        st.plotly_chart(fig_sec, use_container_width=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    bot_col1, bot_col2 = st.columns(2)
+    fig.update_yaxes(
+        showgrid=True,
+        gridcolor=EXECUTIVE_COLORS["grid"],
+        gridwidth=1,
+        tickfont=dict(size=11, color=EXECUTIVE_COLORS["subtext"]),
+        title_font=dict(size=12, color=EXECUTIVE_COLORS["subtext"]),
+        zeroline=False
+    )
     
-    with bot_col1:
-        st.markdown("### Spatial Zoning Quick Viewer")
-        geojson_files = get_geojson_files()
-        if geojson_files:
-            selected_home_zone = st.selectbox(
-                "Select Zone Layer",
-                geojson_files,
-                format_func=lambda x: x.replace(".geojson", "").replace("_", " ").title(),
-                key="home_zone",
-            )
-            try:
-                render_multi_layer_map([selected_home_zone], height=260)
-            except Exception as e:
-                st.error(f"Error reading layer: {e}")
+    return configure_executive_legend(fig)
+
+
+def configure_executive_legend(fig: go.Figure) -> go.Figure:
+    """Positions the legend horizontally above the plot area to eliminate overlap."""
+    fig.update_layout(
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.03,
+            xanchor="left",
+            x=0,
+            font=dict(size=11, color=EXECUTIVE_COLORS["text"]),
+            bgcolor="rgba(0, 0, 0, 0)"
+        )
+    )
+    return fig
+
+
+def get_executive_config() -> dict:
+    """Returns standardized Plotly modebar and responsiveness configuration."""
+    return {
+        "displayModeBar": "hover",
+        "responsive": True,
+        "displaylogo": False,
+        "modeBarButtonsToRemove": ["select2d", "lasso2d", "autoScale2d"]
+    }
+
+
+def validate_dataframe(df: pd.DataFrame, required_cols: list) -> tuple[pd.DataFrame | None, str | None]:
+    """Performs lightweight defensive validation and returns an isolated copy."""
+    if df is None or df.empty:
+        return None, "Data is empty or unavailable."
+    
+    missing = [col for col in required_cols if col not in df.columns]
+    if missing:
+        return None, f"Required fields missing: {', '.join(missing)}"
+    
+    df_plot = df.copy()
+    return df_plot, None
+
+
+# ==========================================
+# COMPONENT 1: HISTORICAL REVENUE TIME SERIES
+# ==========================================
+
+def render_historical_revenue_chart(
+    df: pd.DataFrame,
+    date_col: str = "date",
+    revenue_col: str = "actual_revenue",
+    monthly_target: float = 2500000.0,
+    unit_scale: float = 1e6
+) -> go.Figure | None:
+    """
+    Renders Component 1: Historical Revenue Time Series & Trend Analysis.
+    Scale: Inputs scaled by unit_scale (default 1e6 = PhP Millions).
+    """
+    df_plot, err = validate_dataframe(df, [date_col, revenue_col])
+    if err:
+        st.warning(f"Revenue visualization unavailable: {err}")
+        return None
+    
+    try:
+        df_plot[date_col] = pd.to_datetime(df_plot[date_col])
+        df_plot[revenue_col] = pd.to_numeric(df_plot[revenue_col], errors="coerce")
+        df_plot = df_plot.dropna(subset=[date_col, revenue_col]).sort_values(by=date_col)
+        
+        if df_plot.empty:
+            st.warning("Revenue visualization unavailable: no valid numerical date/revenue records found.")
+            return None
+
+        # Values converted to target display scale (Millions)
+        rev_scaled = df_plot[revenue_col] / unit_scale
+        dates = df_plot[date_col]
+        target_scaled = monthly_target / unit_scale
+        
+        # Historical Statistics (computed ONLY on historical values)
+        mean_scaled = rev_scaled.mean()
+        std_scaled = rev_scaled.std()
+        upper_scaled = mean_scaled + std_scaled
+        lower_scaled = max(0.0, mean_scaled - std_scaled)
+        
+        # 3-Month Moving Average
+        ma3_scaled = rev_scaled.rolling(window=3, min_periods=3).mean()
+        
+        # OLS Trendline calculation
+        x_numeric = (dates - dates.min()).dt.days.values
+        if len(x_numeric) > 1 and np.var(x_numeric) > 0:
+            slope, intercept = np.polyfit(x_numeric, rev_scaled.values, 1)
+            ols_trend = intercept + slope * x_numeric
         else:
-            st.info("No .geojson spatial zoning layers found in the root directory.")
+            ols_trend = np.full(len(dates), mean_scaled)
 
-    with bot_col2:
-        st.markdown("### Historical Revenue Time Series & Trend Analysis")
-        
-        x_numeric = np.arange(len(df_rev))
-        y_vals = df_rev["Collected_Revenue"].values
-        slope, intercept = np.polyfit(x_numeric, y_vals, 1)
-        trend_line = slope * x_numeric + intercept
-        
-        trend_status = f"📈 UPTREND (+PhP {slope/1e3:.2f}k/mo)" if slope > 0 else f"📉 DOWNTREND ({slope/1e3:.2f}k/mo)"
-        trend_color = "#238636" if slope > 0 else "#DA3633"
+        fig = go.Figure()
 
-        st.markdown(
-            f"""
-            <div style="background-color: #161B22; border: 1px solid #30363D; padding: 10px 14px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <span style="font-size: 11px; color: #8B949E;">Baseline Historical Collection Trend:</span><br>
-                    <span style="font-size: 16px; font-weight: bold; color: {trend_color};">{trend_status}</span>
-                </div>
-                <div style="font-size: 11px; color: #C9D1D9; text-align: right;">
-                    Monthly Avg: <b>PhP {df_rev['Collected_Revenue'].mean()/1e6:.2f} Million</b><br>Cumulative: <b>PhP {df_rev['Collected_Revenue'].sum()/1e9:.3f} Billion</b>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        fig_ts = go.Figure()
-        fig_ts.add_trace(
-            go.Scatter(
-                x=df_rev["Date"],
-                y=df_rev["Collected_Revenue"],
-                mode="lines+markers",
-                name="Monthly Collection",
-                line=dict(color="#58A6FF", width=2),
-                marker=dict(size=4),
-            )
-        )
-        fig_ts.add_trace(
-            go.Scatter(
-                x=df_rev["Date"],
-                y=trend_line,
-                mode="lines",
-                name="Trendline (OLS)",
-                line=dict(color=trend_color, width=2, dash="dash"),
-            )
-        )
-
-        fig_ts.update_layout(
-            template="plotly_dark",
-            height=210,
-            margin=dict(l=10, r=10, t=10, b=10),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            yaxis_title="PhP",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        )
-        st.plotly_chart(fig_ts, use_container_width=True)
-
-# ==========================================
-# MODULE 2: INVESTMENT PHASING VIEW
-# ==========================================
-elif nav_selection == "Investment Phasing (Phases 1–4)":
-    st.title("💰 Investment & Phasing Program (2026–2040)")
-    st.markdown(f"Detailed evaluator breakdown of the **{len(df_master)} Programs and Projects (PAPs)** amounting to **PhP {df_master['Cost_PhP_B'].sum():,.3f} Billion** across 4 implementation phases.")
-    
-    col_p1, col_p2, col_p3, col_p4 = st.columns(4)
-    with col_p1:
-        st.metric("Phase 1 (2026–2030)", f"PhP {df_master[df_master['Phase'].str.contains('Phase 1')]['Cost_PhP_B'].sum():.3f} Billion", f"{len(df_master[df_master['Phase'].str.contains('Phase 1')])} Initial PAPs")
-    with col_p2:
-        st.metric("Phase 2 (2029–2035)", f"PhP {df_master[df_master['Phase'].str.contains('Phase 2')]['Cost_PhP_B'].sum():.3f} Billion", f"{len(df_master[df_master['Phase'].str.contains('Phase 2')])} Core PAPs")
-    with col_p3:
-        st.metric("Phase 3 (2032–2038)", f"PhP {df_master[df_master['Phase'].str.contains('Phase 3')]['Cost_PhP_B'].sum():.3f} Billion", f"{len(df_master[df_master['Phase'].str.contains('Phase 3')])} Major Capital PAPs")
-    with col_p4:
-        st.metric("Phase 4 (2035–2040)", f"PhP {df_master[df_master['Phase'].str.contains('Phase 4')]['Cost_PhP_B'].sum():.3f} Billion", f"{len(df_master[df_master['Phase'].str.contains('Phase 4')])} Finalizing PAPs")
-        
-    st.markdown("---")
-    
-    selected_phase = st.selectbox("Select Phase to Inspect Projects:", options=["All Phases", "Phase 1 (2026–2030)", "Phase 2 (2029–2035)", "Phase 3 (2032–2038)", "Phase 4 (2035–2040)"])
-    
-    if selected_phase == "All Phases":
-        df_phase_view = df_master
-    else:
-        df_phase_view = df_master[df_master['Phase'] == selected_phase]
-
-    st.markdown(f"**Displaying {len(df_phase_view)} PAPs | Total Budget: PhP {df_phase_view['Cost_PhP_B'].sum():,.3f} Billion**")
-    st.dataframe(df_phase_view[["PROJECT NO.", "PROJECT TITLE", "SECTOR", "CATEGORY", "Phase", "PCM Stage", "ESTIMATE AMOUNT"]], use_container_width=True, height=450)
-
-# ==========================================
-# MODULE 3: MASTER PLAN PROJECTS DIRECTORY VIEW
-# ==========================================
-elif nav_selection == "Master Plan Projects Directory":
-    st.title("📋 Master Plan Programs & Projects (PAPs) Directory")
-    st.markdown(f"Complete searchable database of **{len(df_master)} PAPs** totaling **PhP {df_master['Cost_PhP_B'].sum():,.3f} Billion**.")
-
-    col_filter1, col_filter2, col_filter3 = st.columns(3)
-    with col_filter1:
-        selected_phases = st.multiselect("Filter by Phase:", options=sorted(df_master['Phase'].unique()), default=sorted(df_master['Phase'].unique()))
-    with col_filter2:
-        selected_sectors = st.multiselect("Filter by Sector:", options=sorted(df_master['SECTOR'].unique()), default=sorted(df_master['SECTOR'].unique()))
-    with col_filter3:
-        selected_cats = st.multiselect("Filter by Category:", options=sorted(df_master['CATEGORY'].unique()), default=sorted(df_master['CATEGORY'].unique()))
-
-    df_filtered = df_master[
-        (df_master['Phase'].isin(selected_phases)) & 
-        (df_master['SECTOR'].isin(selected_sectors)) & 
-        (df_master['CATEGORY'].isin(selected_cats))
-    ]
-
-    st.markdown(f"**Showing {len(df_filtered)} of {len(df_master)} Projects | Subtotal: PhP {df_filtered['Cost_PhP_B'].sum():,.3f} Billion**")
-
-    st.dataframe(
-        df_filtered[["PROJECT NO.", "PROJECT TITLE", "SECTOR", "CATEGORY", "Phase", "PCM Stage", "ESTIMATE AMOUNT"]],
-        use_container_width=True,
-        height=480
-    )
-
-# ==========================================
-# MODULE 4: MANPOWER JUSTIFICATION VIEW
-# ==========================================
-elif nav_selection == "Manpower Justification":
-    st.title("👷 Technical Engineering Manpower Justification")
-    st.markdown("Operational necessity analysis justifying the direct appointment of **Engineer V, Engineer III, and two Engineer I** positions.")
-
-    st.markdown(
-        """
-        <div class="callout-box">
-            <h4 style="margin: 0 0 6px 0; color: #58A6FF;">Core Technical Rationale for Evaluators</h4>
-            <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.5;">
-                Executing complex infrastructure, port extension, environmental baselines, and institutional development across <b>Phase 1 (39 Immediate PAPs) through Phase 4</b> requires an agile, certified technical workforce. Approving the requested headcount—<b>Engineer V (Division Lead), Engineer III (Senior Technical Lead), and two Engineer I positions (Field Supervision & QA/QC Engineers)</b>—ensures robust project supervision, timely procurement, and high-quality civil engineering execution across all 95 PAPs.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("### Requested Engineering Headcount")
-        
-        staff_data = pd.DataFrame({
-            "Engineering Position": [
-                "Engineer V (Division Chief / Strategic Lead)",
-                "Engineer III (Senior Project / Technical Lead)",
-                "Engineer I - Position A (Field & Civil Works Supervision)",
-                "Engineer I - Position B (QA/QC & Spatial Data Engineer)"
-            ],
-            "Requested Positions": [1, 1, 1, 1]
-        })
-        
-        fig_staff = go.Figure()
-        fig_staff.add_trace(go.Bar(
-            y=staff_data["Engineering Position"], 
-            x=staff_data["Requested Positions"], 
-            name="Personnel Headcount", 
-            orientation='h', 
-            marker_color='#58A6FF',
-            text=staff_data["Requested Positions"],
-            textposition='auto'
+        # 1. Statistical Control Band (Mean +/- 1SD)
+        fig.add_trace(go.Scatter(
+            x=pd.concat([dates, dates[::-1]]),
+            y=pd.concat([pd.Series(upper_scaled, index=dates.index), pd.Series(lower_scaled, index=dates.index)[::-1]]),
+            fill="toself",
+            fillcolor=EXECUTIVE_COLORS["stat_band"],
+            line=dict(color="rgba(255,255,255,0)"),
+            hoverinfo="skip",
+            showlegend=True,
+            name="Historical Mean ± 1σ"
         ))
         
-        fig_staff.update_layout(
-            template="plotly_dark",
-            height=340,
-            margin=dict(l=10, r=10, t=20, b=10),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            xaxis=dict(dtick=1, range=[0, 2])
-        )
-        st.plotly_chart(fig_staff, use_container_width=True)
+        # Statistical Band Boundary Reference Line (Upper)
+        fig.add_trace(go.Scatter(
+            x=dates, y=[upper_scaled] * len(dates),
+            mode="lines",
+            line=dict(color=EXECUTIVE_COLORS["stat_line"], width=1, dash="dot"),
+            showlegend=False, hoverinfo="skip"
+        ))
+        # Statistical Band Boundary Reference Line (Lower)
+        fig.add_trace(go.Scatter(
+            x=dates, y=[lower_scaled] * len(dates),
+            mode="lines",
+            line=dict(color=EXECUTIVE_COLORS["stat_line"], width=1, dash="dot"),
+            showlegend=False, hoverinfo="skip"
+        ))
 
-    with col2:
-        st.markdown("### Functional Mandate Breakdown")
-        
-        roles_table = pd.DataFrame({
-            "Position Title": ["Engineer V", "Engineer III", "Engineer I (Field)", "Engineer I (QA/QC & GIS)"],
-            "Primary Responsibilities": [
-                "Division management, strategic program alignment, and multi-agency infrastructure governance",
-                "Detailed engineering design review, technical specifications, and procurement oversight",
-                "On-site project inspection, contractor compliance, and civil works measurement",
-                "Quality assurance, structural monitoring documentation, and GIS layer integration"
-            ]
-        })
-        st.dataframe(roles_table, use_container_width=True, height=340)
+        # 2. OLS Trendline
+        fig.add_trace(go.Scatter(
+            x=dates, y=ols_trend,
+            mode="lines",
+            name="OLS Trend",
+            line=dict(color=EXECUTIVE_COLORS["trend"], width=1.8),
+            hovertemplate="OLS Trend: PhP %{y:.2f}M<extra></extra>"
+        ))
 
-# ==========================================
-# MODULE 5: REVENUE ANALYTICS VIEW
-# ==========================================
-elif nav_selection == "Revenue Analytics & Forecasting":
-    st.title("📈 Revenue Collection Analytics & Master Plan Forecasting")
-    st.markdown("Historical revenue analysis (2024–2026) and long-term financial modeling under the **PFEZ Master Plan PAPs (2026–2040)**.")
+        # 3. 3-Month Moving Average
+        fig.add_trace(go.Scatter(
+            x=dates, y=ma3_scaled,
+            mode="lines",
+            name="3-Month Moving Average",
+            line=dict(color=EXECUTIVE_COLORS["ma"], width=2.2),
+            hovertemplate="3-Mo MA: PhP %{y:.2f}M<extra></extra>"
+        ))
 
-    st.markdown("### 💡 Revenue Stream Definitions & Classification")
-    
-    rev_col1, rev_col2 = st.columns(2)
-    with rev_col1:
-        st.markdown(
-            """
-            <div style="background-color: #161B22; border-left: 4px solid #A371F7; border-top: 1px solid #30363D; border-right: 1px solid #30363D; border-bottom: 1px solid #30363D; padding: 14px 18px; border-radius: 8px; height: 100%;">
-                <h4 style="margin: 0 0 6px 0; color: #A371F7; font-size: 16px;">⚓ Traditional Revenue</h4>
-                <p style="margin: 0 0 8px 0; color: #C9D1D9; font-size: 12px; font-weight: 600;">Core Maritime & Vessel Operations</p>
-                <p style="margin: 0; color: #8B949E; font-size: 12px; line-height: 1.4;">
-                    Generated directly from <b>Domestic and Foreign Vessels ship calls</b>. Includes port dues, berthing/dockage fees, cargo wharfage, pilotage, and vessel tonnage fees. Highly dependent on shipping schedules and global trade cycles.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    with rev_col2:
-        st.markdown(
-            """
-            <div style="background-color: #161B22; border-left: 4px solid #F0883E; border-top: 1px solid #30363D; border-right: 1px solid #30363D; border-bottom: 1px solid #30363D; padding: 14px 18px; border-radius: 8px; height: 100%;">
-                <h4 style="margin: 0 0 6px 0; color: #F0883E; font-size: 16px;">🏢 Non-Traditional Revenue</h4>
-                <p style="margin: 0 0 8px 0; color: #C9D1D9; font-size: 12px; font-weight: 600;">Ecozone Real Estate, Logistics & Value-Added Services</p>
-                <p style="margin: 0; color: #8B949E; font-size: 12px; line-height: 1.4;">
-                    Derived from commercial land assets and ecozone facilities. Includes <b>Lease of Contracts, Space Rentals, Container Yard Terminals, and other commercial operations</b>. Provides predictable, contractual long-term income.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True
+        # 4. Actual Monthly Revenue
+        fig.add_trace(go.Scatter(
+            x=dates, y=rev_scaled,
+            mode="lines+markers",
+            name="Actual Revenue",
+            line=dict(color=EXECUTIVE_COLORS["actual"], width=2.5),
+            marker=dict(size=6, color=EXECUTIVE_COLORS["actual"]),
+            hovertemplate="<b>%{x|%B %Y}</b><br>Actual Revenue: <b>PhP %{y:.2f}M</b><extra></extra>"
+        ))
+
+        # 5. Monthly Target Line
+        fig.add_hline(
+            y=target_scaled,
+            line_dash="dash",
+            line_color=EXECUTIVE_COLORS["target"],
+            line_width=1.5,
+            annotation_text=f"Target: PhP {target_scaled:.2f}M",
+            annotation_position="top right",
+            annotation_font=dict(size=11, color=EXECUTIVE_COLORS["target"])
         )
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    st.markdown("### 1. Historical Revenue Breakdown")
-    
-    fig_hist = go.Figure()
-    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Traditional"], mode='lines+markers', name='Traditional Revenue (Ship Calls)', line=dict(color='#A371F7', width=2)))
-    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Non_Traditional"], mode='lines+markers', name='Non-Traditional Revenue (Leases/Rentals)', line=dict(color='#F0883E', width=2)))
-    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Collected_Revenue"], mode='lines+markers', name='Total Revenue Collected', line=dict(width=3, color='#58A6FF')))
-    
-    fig_hist.update_layout(
-        template="plotly_dark",
-        title="Monthly Revenue Collections by Stream (PhP)",
-        xaxis_title="Timeline",
-        yaxis_title="Revenue (PhP)",
-        height=380,
-        margin=dict(l=10, r=10, t=40, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-    )
-    st.plotly_chart(fig_hist, use_container_width=True)
-
-    st.markdown("---")
-
-    st.markdown("### 2. Integrated Revenue Forecast Model (2026–2040)")
-    
-    col_param1, col_param2 = st.columns(2)
-    with col_param1:
-        base_growth = st.slider("Organic Baseline Annual Growth (%)", min_value=1.0, max_value=10.0, value=3.5, step=0.5)
-    with col_param2:
-        pap_multiplier = st.slider("PAPs Implementation Multiplier", min_value=1.0, max_value=2.5, value=1.4, step=0.1)
-
-    df_2025 = df_rev[df_rev["Date"].dt.year == 2025]
-    annual_2025_base = df_2025["Collected_Revenue"].sum() if not df_2025.empty else df_rev["Collected_Revenue"].mean() * 12
-    years = list(range(2026, 2041))
-    
-    baseline_proj = []
-    masterplan_proj = []
-    
-    for y in years:
-        n = y - 2025
-        b_val = annual_2025_base * ((1 + (base_growth / 100)) ** n)
-        baseline_proj.append(b_val)
+        apply_executive_theme(
+            fig,
+            title="Historical Revenue Time Series & Trend Analysis",
+            subtitle="Monthly performance, rolling momentum, linear trend, and statistical control limits"
+        )
         
-        phase_mult = 1.20 if y <= 2028 else (1.55 if y <= 2031 else (2.00 if y <= 2035 else 2.40))
-        m_val = b_val * (1 + (phase_mult - 1) * pap_multiplier)
-        masterplan_proj.append(m_val)
+        fig.update_yaxes(title_text="Revenue (PhP Millions)", tickprefix="PhP ", ticksuffix="M")
+        fig.update_xaxes(title_text="Observation Month")
+        
+        return fig
 
-    df_forecast = pd.DataFrame({
-        "Year": years,
-        "Baseline (PhP Billion)": [v / 1e9 for v in baseline_proj],
-        "Master Plan Integrated (PhP Billion)": [v / 1e9 for v in masterplan_proj]
-    })
+    except Exception as e:
+        st.warning(f"Revenue visualization unavailable: internal processing error ({str(e)}).")
+        return None
 
-    fig_fore = go.Figure()
-    fig_fore.add_trace(go.Scatter(x=df_forecast["Year"], y=df_forecast["Baseline (PhP Billion)"], mode='lines+markers', name='Business-As-Usual', line=dict(dash='dash', color='#8B949E')))
-    fig_fore.add_trace(go.Scatter(x=df_forecast["Year"], y=df_forecast["Master Plan Integrated (PhP Billion)"], mode='lines+markers', name='Master Plan Integrated Revenue', line=dict(width=3, color='#238636')))
-
-    fig_fore.update_layout(
-        template="plotly_dark",
-        title="Projected Annual Revenue Trajectory (PhP Billion)",
-        xaxis_title="Year",
-        yaxis_title="Annual Revenue (PhP Billion)",
-        height=400,
-        margin=dict(l=10, r=10, t=40, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
-    )
-    st.plotly_chart(fig_fore, use_container_width=True)
 
 # ==========================================
-# MODULE 6: SPATIAL MAP VIEWER
+# COMPONENT 2: REVENUE BREAKDOWN BY STREAM
 # ==========================================
-elif nav_selection == "Spatial Map Viewer":
-    st.title("🗺 Spatial Development & Land Use Map Viewer")
-    st.markdown("Interactive GIS viewer integrating local vector zoning layers and the global economic zone repository.")
 
-    map_type = st.radio("Select View Mode:", ["Local QGIS Zoning Layers (Folium)", "Global Open Zone Map (Embedded Iframe)"], horizontal=True)
+def render_revenue_breakdown_chart(
+    df: pd.DataFrame,
+    date_col: str = "date",
+    trad_col: str = "traditional_revenue",
+    nontrad_col: str = "nontraditional_revenue",
+    unit_scale: float = 1e6
+) -> go.Figure | None:
+    """
+    Renders Component 2: Historical Revenue Breakdown by Stream (Stacked Bar).
+    Scale: Inputs scaled by unit_scale (default 1e6 = PhP Millions).
+    """
+    df_plot, err = validate_dataframe(df, [date_col, trad_col, nontrad_col])
+    if err:
+        st.warning(f"Revenue breakdown visualization unavailable: {err}")
+        return None
 
-    if map_type == "Global Open Zone Map (Embedded Iframe)":
-        st.markdown("### Global Special Economic Zones (Open Zone Map)")
-        components.iframe(src="https://www.openzonemap.com/map", height=650, scrolling=True)
+    try:
+        df_plot[date_col] = pd.to_datetime(df_plot[date_col])
+        df_plot[trad_col] = pd.to_numeric(df_plot[trad_col], errors="coerce").fillna(0.0)
+        df_plot[nontrad_col] = pd.to_numeric(df_plot[nontrad_col], errors="coerce").fillna(0.0)
+        df_plot = df_plot.sort_values(by=date_col)
 
-    else:
-        geojson_files = get_geojson_files()
-        
-        if geojson_files:
-            st.write("Select vector layers to display on the master map:")
-            selected_layers = st.multiselect(
-                "Active Zoning Layers",
-                geojson_files,
-                default=geojson_files,
-                format_func=lambda x: x.replace(".geojson", "").replace("_", " ").title(),
+        if df_plot.empty:
+            st.warning("Revenue breakdown visualization unavailable: no valid records found.")
+            return None
+
+        trad_scaled = df_plot[trad_col] / unit_scale
+        nontrad_scaled = df_plot[nontrad_col] / unit_scale
+        total_scaled = trad_scaled + nontrad_scaled
+        dates = df_plot[date_col]
+
+        fig = go.Figure()
+
+        # Traditional Revenue Stack
+        fig.add_trace(go.Bar(
+            x=dates,
+            y=trad_scaled,
+            name="Traditional Revenue (Ship Calls)",
+            marker_color=EXECUTIVE_COLORS["traditional"],
+            customdata=np.stack((nontrad_scaled, total_scaled), axis=-1),
+            hovertemplate=(
+                "<b>%{x|%B %Y}</b><br>"
+                "Traditional: <b>PhP %{y:.2f}M</b><br>"
+                "Non-Traditional: PhP %{customdata[0]:.2f}M<br>"
+                "Total Revenue: <b>PhP %{customdata[1]:.2f}M</b><extra></extra>"
             )
-            
-            if selected_layers:
-                map_col, legend_col = st.columns([3, 1])
-                
-                with map_col:
-                    legend_items = render_multi_layer_map(selected_layers, height=560)
-                    
-                with legend_col:
-                    st.markdown("### 🗂 Zoning Layers Legend")
-                    if legend_items:
-                        for name, col in legend_items:
-                            st.markdown(
-                                f"""
-                                <div style="display: flex; align-items: center; background-color: #161B22; border: 1px solid #30363D; padding: 8px 10px; border-radius: 6px; margin-bottom: 8px;">
-                                    <span style="width: 14px; height: 14px; background-color: {col}; border: 1px solid #ffffff; display: inline-block; margin-right: 10px; border-radius: 3px; flex-shrink: 0;"></span>
-                                    <span style="font-size: 12px; color: #FAFAFA; font-weight: 500;">{name}</span>
-                                </div>
-                                """,
-                                unsafe_allow_html=True,
-                            )
-                    else:
-                        st.info("No active layers selected.")
-            else:
-                st.info("Select at least one layer above to render the map.")
-        else:
-            st.warning("No `.geojson` files found in the project directory.")
+        ))
 
-# ==========================================
-# MODULE 7: M&E & RISK MATRIX (PCM ENHANCED)
-# ==========================================
-elif nav_selection == "M&E & Risk Matrix":
-    st.title("🛡️ Monitoring & Evaluation (M&E) & Risk Matrix")
-    st.markdown(
-        "Project Cycle Management (PCM) framework tracking performance indicators, "
-        "stage-gate execution, and strategic risk mitigation across the PFEZ Master Plan."
-    )
+        # Non-Traditional Revenue Stack
+        fig.add_trace(go.Bar(
+            x=dates,
+            y=nontrad_scaled,
+            name="Non-Traditional Revenue (Leases/Rentals)",
+            marker_color=EXECUTIVE_COLORS["nontraditional"],
+            customdata=np.stack((trad_scaled, total_scaled), axis=-1),
+            hovertemplate=(
+                "<b>%{x|%B %Y}</b><br>"
+                "Traditional: PhP %{customdata[0]:.2f}M<br>"
+                "Non-Traditional: <b>PhP %{y:.2f}M</b><br>"
+                "Total Revenue: <b>PhP %{customdata[1]:.2f}M</b><extra></extra>"
+            )
+        ))
 
-    tab_risk, tab_logframe, tab_pcm = st.tabs([
-        "⚠️ Strategic Risk Register", 
-        "📋 Logical Framework (Logframe)", 
-        "🔄 PCM Phasing & Stage-Gates"
-    ])
-
-    # --- TAB 1: STRATEGIC RISK REGISTER ---
-    with tab_risk:
-        st.markdown("### Strategic Risk Identification & Assessment Matrix")
-        
-        risk_data = [
-            {
-                "Risk ID": "RSK-01",
-                "PCM Stage": "5. Implementation & Monitoring",
-                "Category": "Financial & Budget",
-                "Risk Event / Description": "Capital budget delays or slow local revenue remittance hindering Phase 1 execution.",
-                "Probability": "Medium",
-                "Impact": "High",
-                "Risk Score": "HIGH",
-                "Mitigation Strategy": "Establish automated revenue-sharing models; sequence PAPs by ROI priority.",
-                "Owner": "Finance & BEZA Lead"
-            },
-            {
-                "Risk ID": "RSK-02",
-                "PCM Stage": "5. Implementation & Monitoring",
-                "Category": "Technical / Manpower",
-                "Risk Event / Description": "Delay in approving engineering plantilla positions (Engr V, III, I) leading to weak QA/QC oversight.",
-                "Probability": "High",
-                "Impact": "High",
-                "Risk Score": "CRITICAL",
-                "Mitigation Strategy": "Prioritize immediate recruitment justification; deploy interim third-party QA/QC engineering consultants.",
-                "Owner": "Engineering Division"
-            },
-            {
-                "Risk ID": "RSK-03",
-                "PCM Stage": "3. Formulation & Design",
-                "Category": "Environmental & Climate",
-                "Risk Event / Description": "Coastal erosion, storm surges, and sea-level rise impacting port and wharf extension.",
-                "Probability": "Medium",
-                "Impact": "High",
-                "Risk Score": "HIGH",
-                "Mitigation Strategy": "Conduct EIA & climate resilience studies; integrate green infrastructure and mangrove buffers.",
-                "Owner": "Environmental Unit"
-            },
-            {
-                "Risk ID": "RSK-04",
-                "PCM Stage": "1. Programming",
-                "Category": "Governance & Institutional",
-                "Risk Event / Description": "Multi-agency coordination bottlenecks across regional and national agencies (BARMM, BEZA, DPWH).",
-                "Probability": "Medium",
-                "Impact": "Medium",
-                "Risk Score": "MEDIUM",
-                "Mitigation Strategy": "Formalize Inter-Agency Steering Committee with quarterly M&E progress reporting.",
-                "Owner": "Executive Office"
-            },
-            {
-                "Risk ID": "RSK-05",
-                "PCM Stage": "2. Identification",
-                "Category": "Operational & Land Use",
-                "Risk Event / Description": "Land acquisition and right-of-way (ROW) disputes along economic zone boundaries.",
-                "Probability": "Low",
-                "Impact": "High",
-                "Risk Score": "MEDIUM",
-                "Mitigation Strategy": "Execute boundary surveys and formal land relocation frameworks early in Phase 1.",
-                "Owner": "Legal & Land Dept"
-            }
-        ]
-        df_risk = pd.DataFrame(risk_data)
-
-        # Highlight function for risk score
-        def style_risk(val):
-            if val == "CRITICAL":
-                return "background-color: #8B0000; color: white; font-weight: bold;"
-            elif val == "HIGH":
-                return "background-color: #B22222; color: white; font-weight: bold;"
-            elif val == "MEDIUM":
-                return "background-color: #D2691E; color: white; font-weight: bold;"
-            return "background-color: #2E8B57; color: white; font-weight: bold;"
-
-        st.dataframe(
-            df_risk.style.map(style_risk, subset=["Risk Score"]),
-            use_container_width=True,
-            height=320
+        apply_executive_theme(
+            fig,
+            title="Revenue Stream Composition",
+            subtitle="Monthly breakdown between Traditional core operations and Non-Traditional lease/rental assets"
         )
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        r_col1, r_col2 = st.columns(2)
-        
-        with r_col1:
-            st.markdown("#### Risk Severity Breakdown")
-            fig_risk_pie = px.pie(
-                df_risk,
-                names="Risk Score",
-                title="Risk Severity Summary",
-                color="Risk Score",
-                color_discrete_map={
-                    "CRITICAL": "#8B0000",
-                    "HIGH": "#B22222",
-                    "MEDIUM": "#D2691E",
-                    "LOW": "#2E8B57"
-                },
-                template="plotly_dark",
-                hole=0.4
+        fig.update_layout(barmode="stack")
+        fig.update_yaxes(title_text="Revenue (PhP Millions)", tickprefix="PhP ", ticksuffix="M")
+        fig.update_xaxes(title_text="Observation Month")
+
+        return fig
+
+    except Exception as e:
+        st.warning(f"Revenue breakdown visualization unavailable: internal processing error ({str(e)}).")
+        return None
+
+
+# ==========================================
+# COMPONENT 3: INTEGRATED REVENUE FORECAST
+# ==========================================
+
+def render_revenue_forecast_chart(
+    df: pd.DataFrame,
+    year_col: str = "year",
+    bau_col: str = "bau_revenue",
+    masterplan_col: str = "integrated_revenue",
+    unit_scale: float = 1e6,
+    milestones: dict | None = None
+) -> go.Figure | None:
+    """
+    Renders Component 3: Integrated Revenue Forecast Model (2026–2040).
+    Scale: Inputs scaled by unit_scale. Adjust unit_scale if source is stored in Billions (1e-3) vs Pesos (1e6).
+    """
+    df_plot, err = validate_dataframe(df, [year_col, bau_col, masterplan_col])
+    if err:
+        st.warning(f"Revenue forecast visualization unavailable: {err}")
+        return None
+
+    try:
+        df_plot[year_col] = pd.to_numeric(df_plot[year_col], errors="coerce")
+        df_plot[bau_col] = pd.to_numeric(df_plot[bau_col], errors="coerce")
+        df_plot[masterplan_col] = pd.to_numeric(df_plot[masterplan_col], errors="coerce")
+        df_plot = df_plot.dropna(subset=[year_col, bau_col, masterplan_col]).sort_values(by=year_col)
+
+        if df_plot.empty:
+            st.warning("Revenue forecast visualization unavailable: invalid numerical forecast data.")
+            return None
+
+        # Convert values to PhP Millions
+        bau_scaled = df_plot[bau_col] * (1e6 / unit_scale) if unit_scale != 1e6 else df_plot[bau_col] / 1e6
+        mp_scaled = df_plot[masterplan_col] * (1e6 / unit_scale) if unit_scale != 1e6 else df_plot[masterplan_col] / 1e6
+        years = df_plot[year_col].astype(int)
+        gap_scaled = mp_scaled - bau_scaled
+
+        fig = go.Figure()
+
+        # Shaded Value / Incremental Revenue Gap
+        fig.add_trace(go.Scatter(
+            x=pd.concat([years, years[::-1]]),
+            y=pd.concat([mp_scaled, bau_scaled[::-1]]),
+            fill="toself",
+            fillcolor=EXECUTIVE_COLORS["gap_fill"],
+            line=dict(color="rgba(255,255,255,0)"),
+            hoverinfo="skip",
+            name="Incremental Revenue Potential"
+        ))
+
+        # Business-As-Usual (BAU) Trace
+        fig.add_trace(go.Scatter(
+            x=years,
+            y=bau_scaled,
+            mode="lines",
+            name="Business-As-Usual (BAU)",
+            line=dict(color=EXECUTIVE_COLORS["bau"], width=2, dash="dash"),
+            customdata=gap_scaled,
+            hovertemplate=(
+                "<b>Year %{x}</b><br>"
+                "BAU Revenue: PhP %{y:.2f}M<br>"
+                "Incremental Gap: PhP %{customdata:.2f}M<extra></extra>"
             )
-            fig_risk_pie.update_layout(margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig_risk_pie, use_container_width=True)
+        ))
 
-        with r_col2:
-            st.markdown("#### Risk Distribution by Domain Category")
-            fig_cat = px.bar(
-                df_risk,
-                x="Category",
-                color="Risk Score",
-                title="Risks per Domain",
-                color_discrete_map={
-                    "CRITICAL": "#8B0000",
-                    "HIGH": "#B22222",
-                    "MEDIUM": "#D2691E",
-                    "LOW": "#2E8B57"
-                },
-                template="plotly_dark"
+        # Master Plan Integrated Revenue Trace
+        fig.add_trace(go.Scatter(
+            x=years,
+            y=mp_scaled,
+            mode="lines+markers",
+            name="Master Plan Integrated Revenue",
+            line=dict(color=EXECUTIVE_COLORS["masterplan"], width=2.8),
+            marker=dict(size=6, color=EXECUTIVE_COLORS["masterplan"]),
+            customdata=gap_scaled,
+            hovertemplate=(
+                "<b>Year %{x}</b><br>"
+                "Master Plan Revenue: <b>PhP %{y:.2f}M</b><br>"
+                "Incremental Gap: <b>+PhP %{customdata:.2f}M</b><extra></extra>"
             )
-            fig_cat.update_layout(margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig_cat, use_container_width=True)
+        ))
 
-    # --- TAB 2: LOGICAL FRAMEWORK (LOGFRAME) ---
-    with tab_logframe:
-        st.markdown("### Master Plan Results & Evaluation Framework (Logframe)")
-        
-        me_data = [
-            {
-                "Level": "1. Goal / Impact",
-                "Objectives & Key Performance Indicators": "Transform PFEZ into a sustainable regional economic hub in BARMM.",
-                "Baseline (2024–2026)": "Baseline Port Operations",
-                "Target (2040)": f"PhP {df_master['Cost_PhP_B'].sum():.3f}B Infrastructure Capitalized; 15,000 Direct/Indirect Jobs",
-                "Data Source / Verification": "PSA & BEZA Economic Reports",
-                "Reporting Frequency": "5 Years"
-            },
-            {
-                "Level": "2. Outcomes",
-                "Objectives & Key Performance Indicators": "Increased Port Revenue Generation & Logistics Processing Efficiency",
-                "Baseline (2024–2026)": f"~PhP {df_rev['Collected_Revenue'].sum()/1e9:.3f}B Historical Cumulative",
-                "Target (2040)": ">PhP 2.0B Annual Revenue Target",
-                "Data Source / Verification": "BEZA Financial Audit / REVENUE.xlsx",
-                "Reporting Frequency": "Annual"
-            },
-            {
-                "Level": "2. Outcomes",
-                "Objectives & Key Performance Indicators": "Phase Execution & Master Plan Compliance",
-                "Baseline (2024–2026)": "0% Master Plan Execution",
-                "Target (2040)": f"100% Delivery across {len(df_master)} PAPs",
-                "Data Source / Verification": "Quarterly Project Inspection Logs",
-                "Reporting Frequency": "Quarterly"
-            },
-            {
-                "Level": "3. Outputs",
-                "Objectives & Key Performance Indicators": "Phase 1 Immediate Infrastructure Deliverables (2026–2030)",
-                "Baseline (2024–2026)": "39 Nominated PAPs",
-                "Target (2030)": f"39 PAPs Completed (PhP {df_master[df_master['Phase'].str.contains('Phase 1')]['Cost_PhP_B'].sum():.3f}B Invested)",
-                "Data Source / Verification": "Engineering QA/QC Field Reports",
-                "Reporting Frequency": "Monthly"
-            },
-            {
-                "Level": "4. Inputs",
-                "Objectives & Key Performance Indicators": "Technical Engineering Manpower & Operational Capacity",
-                "Baseline (2024–2026)": "Understaffed / Proposed",
-                "Target (2026)": "4 Key Positions Appointed (Engr V, III, two I)",
-                "Data Source / Verification": "BEZA Plantilla / HR Records",
-                "Reporting Frequency": "Immediate"
-            }
-        ]
+        # Executive Milestone Annotations (Only if defined and present in data)
+        if milestones:
+            for yr, text in milestones.items():
+                if yr in years.values:
+                    y_val = mp_scaled[years == yr].values[0]
+                    fig.add_annotation(
+                        x=yr,
+                        y=y_val,
+                        text=f"<b>{text}</b>",
+                        showarrow=True,
+                        arrowhead=2,
+                        arrowsize=1,
+                        arrowwidth=1.5,
+                        arrowcolor=EXECUTIVE_COLORS["masterplan"],
+                        ax=0,
+                        ay=-35,
+                        font=dict(size=10, color=EXECUTIVE_COLORS["text"]),
+                        bgcolor="rgba(15, 20, 29, 0.85)",
+                        bordercolor=EXECUTIVE_COLORS["masterplan"],
+                        borderwidth=1,
+                        borderpad=4
+                    )
 
-        df_me = pd.DataFrame(me_data)
-        st.dataframe(df_me, use_container_width=True, height=350)
+        apply_executive_theme(
+            fig,
+            title="Long-Term Integrated Revenue Forecast (2026–2040)",
+            subtitle="Strategic comparison between Business-As-Usual baseline and Master Plan execution"
+        )
 
-    # --- TAB 3: PCM PHASING & STAGE-GATES ---
-    with tab_pcm:
-        st.markdown("### Project Cycle Management (PCM) Phasing Matrix")
-        
-        pcm_summary = df_master.groupby('Phase').agg(
-            Total_PAPs=('PROJECT NO.', 'count'),
-            Total_Cost_B=('Cost_PhP_B', 'sum')
-        ).reset_index()
+        fig.update_yaxes(title_text="Annual Revenue (PhP Millions)", tickprefix="PhP ", ticksuffix="M")
+        fig.update_xaxes(title_text="Forecast Year", dtick=2)
 
-        pcm_stage_map = {
-            "Phase 1 (2026–2030)": "5. Implementation & Monitoring",
-            "Phase 2 (2029–2035)": "3. Formulation & Design",
-            "Phase 3 (2032–2038)": "2. Identification",
-            "Phase 4 (2035–2040)": "1. Programming"
-        }
-        pcm_year_map = {
-            "Phase 1 (2026–2030)": "2030",
-            "Phase 2 (2029–2035)": "2035",
-            "Phase 3 (2032–2038)": "2038",
-            "Phase 4 (2035–2040)": "2040"
-        }
-        pcm_auth_map = {
-            "Phase 1 (2026–2030)": "BEZA Engineering Division (Phase 1 Lead)",
-            "Phase 2 (2029–2035)": "BEZA Operations & Engineering",
-            "Phase 3 (2032–2038)": "BEZA Strategic Planning Unit",
-            "Phase 4 (2035–2040)": "BEZA Executive Directorate"
-        }
+        return fig
 
-        pcm_summary["PCM Stage"] = pcm_summary["Phase"].map(pcm_stage_map).fillna("1. Programming")
-        pcm_summary["Target Year"] = pcm_summary["Phase"].map(pcm_year_map).fillna("2040")
-        pcm_summary["Monitoring Authority"] = pcm_summary["Phase"].map(pcm_auth_map).fillna("BEZA Directorate")
-
-        st.dataframe(pcm_summary, use_container_width=True, height=250)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("#### Portfolio Phasing Distribution by Capital & Projects Count")
-        
-        pcm_col1, pcm_col2 = st.columns(2)
-        with pcm_col1:
-            fig_pcm_bar = px.bar(
-                pcm_summary,
-                x="Phase",
-                y="Total_Cost_B",
-                color="PCM Stage",
-                title="Capital Investment per PCM Phase (PhP B)",
-                template="plotly_dark",
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
-            fig_pcm_bar.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig_pcm_bar, use_container_width=True)
-
-        with pcm_col2:
-            fig_pcm_paps = px.pie(
-                pcm_summary,
-                names="Phase",
-                values="Total_PAPs",
-                title="PAPs Count Share per Phase",
-                template="plotly_dark",
-                hole=0.4,
-                color_discrete_sequence=px.colors.qualitative.Safe
-            )
-            fig_pcm_paps.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig_pcm_paps, use_container_width=True)
+    except Exception as e:
+        st.warning(f"Revenue forecast visualization unavailable: internal processing error ({str(e)}).")
+        return None
