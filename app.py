@@ -822,6 +822,21 @@ elif nav_selection == "Revenue Analytics & Forecasting":
     master_vals = [43 + (y - 2026) * 4.2 + (0 if y < 2028 else (y - 2027) * 1.8) for y in forecast_years]
 
     fig_fore = go.Figure()
+    
+    # Transparent green filled area under master plan curve (70% opacity / filltozeroy or tonexty)
+    fig_fore.add_trace(
+        go.Scatter(
+            x=forecast_years,
+            y=master_vals,
+            mode='lines',
+            name='Incremental Revenue Potential',
+            fill='tozeroy',
+            fillcolor='rgba(16, 185, 129, 0.15)',
+            line=dict(color='rgba(16, 185, 129, 0)', width=0),
+            showlegend=True
+        )
+    )
+
     fig_fore.add_trace(
         go.Scatter(
             x=forecast_years,
@@ -831,6 +846,7 @@ elif nav_selection == "Revenue Analytics & Forecasting":
             line=dict(color="#8B949E", width=2, dash="dash")
         )
     )
+    
     fig_fore.add_trace(
         go.Scatter(
             x=forecast_years,
@@ -842,7 +858,7 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         )
     )
 
-    # Milestone Annotations matching image_a4a499.png
+    # Milestone Annotations matching image reference
     fig_fore.add_annotation(x=2028, y=master_vals[forecast_years.index(2028)], text="Phase I PAPs Online", showarrow=True, arrowhead=2, ax=0, ay=-30)
     fig_fore.add_annotation(x=2032, y=master_vals[forecast_years.index(2032)], text="Phase II Port Expansion", showarrow=True, arrowhead=2, ax=0, ay=-30)
     fig_fore.add_annotation(x=2036, y=master_vals[forecast_years.index(2036)], text="Full Logistics Integration", showarrow=True, arrowhead=2, ax=0, ay=-30)
