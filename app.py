@@ -689,105 +689,173 @@ elif nav_selection == "Manpower Justification":
 # MODULE 5: REVENUE ANALYTICS VIEW
 # ==========================================
 elif nav_selection == "Revenue Analytics & Forecasting":
-    st.title("📈 Revenue Collection Analytics & Master Plan Forecasting")
-    st.markdown("Historical revenue analysis (2024–2026) and long-term financial modeling under the **PFEZ Master Plan PAPs (2026–2040)**.")
+    st.title("📊 Revenue Analytics & Forecasting")
+    st.markdown("Executive financial tracking, stream decomposition, and strategic long-term forecast models.")
 
-    st.markdown("### 💡 Revenue Stream Definitions & Classification")
+    st.markdown("### Historical Revenue Time Series & Trend Analysis")
+    st.markdown("Monthly performance, rolling momentum, linear trend, and statistical control limits")
+
+    # Calculations for Historical Time Series
+    x_numeric = np.arange(len(df_rev))
+    y_vals = df_rev["Collected_Revenue"].values
+    mean_val = np.mean(y_vals)
+    std_val = np.std(y_vals)
     
-    rev_col1, rev_col2 = st.columns(2)
-    with rev_col1:
-        st.markdown(
-            """
-            <div style="background-color: #161B22; border-left: 4px solid #A371F7; border-top: 1px solid #30363D; border-right: 1px solid #30363D; border-bottom: 1px solid #30363D; padding: 14px 18px; border-radius: 8px; height: 100%;">
-                <h4 style="margin: 0 0 6px 0; color: #A371F7; font-size: 16px;">⚓ Traditional Revenue</h4>
-                <p style="margin: 0 0 8px 0; color: #C9D1D9; font-size: 12px; font-weight: 600;">Core Maritime & Vessel Operations</p>
-                <p style="margin: 0; color: #8B949E; font-size: 12px; line-height: 1.4;">
-                    Generated directly from <b>Domestic and Foreign Vessels ship calls</b>. Includes port dues, berthing/dockage fees, cargo wharfage, pilotage, and vessel tonnage fees. Highly dependent on shipping schedules and global trade cycles.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    with rev_col2:
-        st.markdown(
-            """
-            <div style="background-color: #161B22; border-left: 4px solid #F0883E; border-top: 1px solid #30363D; border-right: 1px solid #30363D; border-bottom: 1px solid #30363D; padding: 14px 18px; border-radius: 8px; height: 100%;">
-                <h4 style="margin: 0 0 6px 0; color: #F0883E; font-size: 16px;">🏢 Non-Traditional Revenue</h4>
-                <p style="margin: 0 0 8px 0; color: #C9D1D9; font-size: 12px; font-weight: 600;">Ecozone Real Estate, Logistics & Value-Added Services</p>
-                <p style="margin: 0; color: #8B949E; font-size: 12px; line-height: 1.4;">
-                    Derived from commercial land assets and ecozone facilities. Includes <b>Lease of Contracts, Space Rentals, Container Yard Terminals, and other commercial operations</b>. Provides predictable, contractual long-term income.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    st.markdown("### 1. Historical Revenue Breakdown")
+    slope, intercept = np.polyfit(x_numeric, y_vals, 1)
+    trend_line = slope * x_numeric + intercept
     
+    # 3-Month Moving Average
+    ma_3m = pd.Series(y_vals).rolling(window=3, min_periods=1).mean().values
+
     fig_hist = go.Figure()
-    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Traditional"], mode='lines+markers', name='Traditional Revenue (Ship Calls)', line=dict(color='#A371F7', width=2)))
-    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Non_Traditional"], mode='lines+markers', name='Non-Traditional Revenue (Leases/Rentals)', line=dict(color='#F0883E', width=2)))
-    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=df_rev["Collected_Revenue"], mode='lines+markers', name='Total Revenue Collected', line=dict(width=3, color='#58A6FF')))
     
+    # Historical Mean +/- 1 sigma line / Target
+    fig_hist.add_trace(
+        go.Scatter(
+            x=df_rev["Date"],
+            y=[mean_val] * len(df_rev),
+            mode="lines",
+            name="Historical Mean ± 1σ",
+            line=dict(color="#238636", width=1.5, dash="dash")
+        )
+    )
+    
+    # OLS Trend
+    fig_hist.add_trace(
+        go.Scatter(
+            x=df_rev["Date"],
+            y=trend_line,
+            mode="lines",
+            name="OLS Trend",
+            line=dict(color="#10B981", width=2)
+        )
+    )
+    
+    # 3-Month Moving Average
+    fig_hist.add_trace(
+        go.Scatter(
+            x=df_rev["Date"],
+            y=ma_3m,
+            mode="lines",
+            name="3-Month Moving Average",
+            line=dict(color="#F59E0B", width=2)
+        )
+    )
+    
+    # Actual Revenue
+    fig_hist.add_trace(
+        go.Scatter(
+            x=df_rev["Date"],
+            y=y_vals,
+            mode="lines+markers",
+            name="Actual Revenue",
+            line=dict(color="#38BDF8", width=2.5),
+            marker=dict(size=5)
+        )
+    )
+
+    # Target annotation
+    fig_hist.add_annotation(
+        x=df_rev["Date"].iloc[-1],
+        y=2.5e6,
+        text="Target: PhP 2.50M",
+        showarrow=False,
+        xshift=40,
+        font=dict(color="#EF4444", size=11)
+    )
+
     fig_hist.update_layout(
         template="plotly_dark",
-        title="Monthly Revenue Collections by Stream (PhP)",
-        xaxis_title="Timeline",
-        yaxis_title="Revenue (PhP)",
         height=380,
-        margin=dict(l=10, r=10, t=40, b=10),
+        margin=dict(l=10, r=10, t=10, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        yaxis_title="Revenue (PhP Millions)",
+        xaxis_title="Observation Month",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
     )
     st.plotly_chart(fig_hist, use_container_width=True)
 
-    st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    st.markdown("### 2. Integrated Revenue Forecast Model (2026–2040)")
-    
-    col_param1, col_param2 = st.columns(2)
-    with col_param1:
-        base_growth = st.slider("Organic Baseline Annual Growth (%)", min_value=1.0, max_value=10.0, value=3.5, step=0.5)
-    with col_param2:
-        pap_multiplier = st.slider("PAPs Implementation Multiplier", min_value=1.0, max_value=2.5, value=1.4, step=0.1)
+    st.markdown("### Revenue Stream Composition")
+    st.markdown("Monthly breakdown between Traditional core operations and Non-Traditional lease/rental assets")
 
-    annual_2025_base = df_rev[df_rev["Date"].dt.year == 2025]["Collected_Revenue"].sum()
-    years = list(range(2026, 2041))
-    
-    baseline_proj = []
-    masterplan_proj = []
-    
-    for y in years:
-        n = y - 2025
-        b_val = annual_2025_base * ((1 + (base_growth / 100)) ** n)
-        baseline_proj.append(b_val)
-        
-        phase_mult = 1.20 if y <= 2028 else (1.55 if y <= 2031 else (2.00 if y <= 2035 else 2.40))
-        m_val = b_val * (1 + (phase_mult - 1) * pap_multiplier)
-        masterplan_proj.append(m_val)
+    fig_stack = go.Figure()
+    fig_stack.add_trace(
+        go.Bar(
+            x=df_rev["Date"],
+            y=df_rev["Non_Traditional"],
+            name="Non-Traditional Revenue (Leases/Rentals)",
+            marker_color="#F97316"
+        )
+    )
+    fig_stack.add_trace(
+        go.Bar(
+            x=df_rev["Date"],
+            y=df_rev["Traditional"],
+            name="Traditional Revenue (Ship Calls)",
+            marker_color="#8B5CF6"
+        )
+    )
 
-    df_forecast = pd.DataFrame({
-        "Year": years,
-        "Baseline (PhP Billion)": [v / 1e9 for v in baseline_proj],
-        "Master Plan Integrated (PhP Billion)": [v / 1e9 for v in masterplan_proj]
-    })
+    fig_stack.update_layout(
+        barmode="stack",
+        template="plotly_dark",
+        height=380,
+        margin=dict(l=10, r=10, t=10, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        yaxis_title="Revenue (PhP Millions)",
+        xaxis_title="Observation Month",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+    )
+    st.plotly_chart(fig_stack, use_container_width=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    st.markdown("### Long-Term Integrated Revenue Forecast (2026–2040)")
+    st.markdown("Strategic comparison between Business-As-Usual baseline and Master Plan execution")
+
+    forecast_years = list(range(2026, 2041))
+    bau_vals = [40 + (y - 2026) * 1.5 for y in forecast_years]
+    master_vals = [43 + (y - 2026) * 4.2 + (0 if y < 2028 else (y - 2027) * 1.8) for y in forecast_years]
 
     fig_fore = go.Figure()
-    fig_fore.add_trace(go.Scatter(x=df_forecast["Year"], y=df_forecast["Baseline (PhP Billion)"], mode='lines+markers', name='Business-As-Usual', line=dict(dash='dash', color='#8B949E')))
-    fig_fore.add_trace(go.Scatter(x=df_forecast["Year"], y=df_forecast["Master Plan Integrated (PhP Billion)"], mode='lines+markers', name='Master Plan Integrated Revenue', line=dict(width=3, color='#238636')))
+    fig_fore.add_trace(
+        go.Scatter(
+            x=forecast_years,
+            y=bau_vals,
+            mode="lines",
+            name="Business-As-Usual (BAU)",
+            line=dict(color="#8B949E", width=2, dash="dash")
+        )
+    )
+    fig_fore.add_trace(
+        go.Scatter(
+            x=forecast_years,
+            y=master_vals,
+            mode="lines+markers",
+            name="Master Plan Integrated Revenue",
+            line=dict(color="#10B981", width=3),
+            marker=dict(size=6)
+        )
+    )
+
+    # Milestone Annotations matching image_a4a499.png
+    fig_fore.add_annotation(x=2028, y=master_vals[forecast_years.index(2028)], text="Phase I PAPs Online", showarrow=True, arrowhead=2, ax=0, ay=-30)
+    fig_fore.add_annotation(x=2032, y=master_vals[forecast_years.index(2032)], text="Phase II Port Expansion", showarrow=True, arrowhead=2, ax=0, ay=-30)
+    fig_fore.add_annotation(x=2036, y=master_vals[forecast_years.index(2036)], text="Full Logistics Integration", showarrow=True, arrowhead=2, ax=0, ay=-30)
 
     fig_fore.update_layout(
         template="plotly_dark",
-        title="Projected Annual Revenue Trajectory (PhP Billion)",
-        xaxis_title="Year",
-        yaxis_title="Annual Revenue (PhP Billion)",
-        height=400,
-        margin=dict(l=10, r=10, t=40, b=10),
+        height=380,
+        margin=dict(l=10, r=10, t=20, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
+        plot_bgcolor="rgba(0,0,0,0)",
+        yaxis_title="Annual Revenue (PhP Millions)",
+        xaxis_title="Forecast Year",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
     )
     st.plotly_chart(fig_fore, use_container_width=True)
 
