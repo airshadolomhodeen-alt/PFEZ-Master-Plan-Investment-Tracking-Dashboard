@@ -1158,7 +1158,3 @@ elif nav_selection == "M&E & Risk Matrix":
         "Low Risk",
     ]
     st.dataframe(risk_summary, use_container_width=True, height=300)
-```<FollowUp>
-Would you like any additional adjustments to the chart formatting, axis labels, or legend placements?
-</FollowUp><ElicitationsGroup>
-</ElicitationsGroup>
