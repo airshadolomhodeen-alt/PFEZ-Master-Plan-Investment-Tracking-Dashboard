@@ -705,7 +705,7 @@ elif nav_selection == "PSIC Industry Classification":
         <div style="background-color: #161b22; border-left: 4px solid #58A6FF; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #30363d;">
             <h4 style="margin: 0 0 6px 0; color: #58A6FF; font-size: 15px;">Freeport & Special Economic Zone Sector Alignment</h4>
             <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.5;">
-                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J, K, M)</b>. Explore the structural density and hierarchical market distribution below.
+                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J, K, M)</b>. Explore the structural density and market share distribution below.
             </p>
         </div>
         """,
@@ -776,7 +776,7 @@ elif nav_selection == "PSIC Industry Classification":
 
         st.markdown("---")
 
-        # 2. DEDICATED SECTION: Executive-Ready Macro Treemap (Section Level Only)
+        # 2. DEDICATED SECTION: Executive Macro Market Map (Section Level Share)
         st.subheader("🌐 PSIC Rev. 5 Macro Market Map (Section Level Share)")
         st.markdown("Proportional market layout illustrating the concentration of economic sectors across the master registry.")
 
@@ -785,7 +785,6 @@ elif nav_selection == "PSIC Industry Classification":
         df_treemap_data['Section_Name'] = df_treemap_data['Filled_Section'].map(section_names).fillna('Other Activities')
         df_treemap_data['Record_Weight'] = 1
 
-        # Aggregate cleanly by Section Name so tiles are uncluttered and fully readable
         treemap_summary = df_treemap_data.groupby('Section_Name')['Record_Weight'].sum().reset_index(name='Total_Records')
 
         fig_treemap = px.treemap(
@@ -807,6 +806,26 @@ elif nav_selection == "PSIC Industry Classification":
             plot_bgcolor="rgba(0,0,0,0)",
         )
         st.plotly_chart(fig_treemap, use_container_width=True)
+
+        st.markdown("---")
+
+        # 3. FILTERS AND TABLE REGISTRY
+        c1, c2 = st.columns([1.2, 1.8])
+        with c1:
+            sections = sorted([str(s) for s in df_psic['Section'].dropna().unique()])
+            selected_sections = st.multiselect("Filter by Section:", options=sections, default=sections)
+        with c2:
+            search_query = st.text_input("Search Description or Code:", placeholder="Enter keyword (e.g., manufacturing, transport, port, fishing)...")
+
+        df_psic_filtered = df_psic[df_psic['Section'].astype(str).isin(selected_sections)]
+        if search_query:
+            mask = df_psic_filtered.astype(str).apply(lambda row: row.str.contains(search_query, case=False, na=False).any(), axis=1)
+            df_psic_filtered = df_psic_filtered[mask]
+
+        st.markdown(f"**Showing {len(df_psic_filtered):,}/{len(df_psic):,} matching classification records**")
+        st.dataframe(df_psic_filtered.drop(columns=['Filled_Section']), use_container_width=True, height=450)
+    else:
+        st.warning("`PSIC_rev 5.xlsx` was not found or contains no readable sheets.")
 # ==========================================
 # MODULE: MANPOWER JUSTIFICATION
 # ==========================================
