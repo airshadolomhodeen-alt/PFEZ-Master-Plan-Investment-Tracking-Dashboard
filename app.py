@@ -705,7 +705,7 @@ elif nav_selection == "PSIC Industry Classification":
         <div style="background-color: #161b22; border-left: 4px solid #58A6FF; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #30363d;">
             <h4 style="margin: 0 0 6px 0; color: #58A6FF; font-size: 15px;">Freeport & Special Economic Zone Sector Alignment</h4>
             <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.5;">
-                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J, K, M)</b>. Explore the structural density and market share distribution below.
+                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J, K, M)</b>. Explore the structural density and hierarchical market distribution below.
             </p>
         </div>
         """,
@@ -776,28 +776,29 @@ elif nav_selection == "PSIC Industry Classification":
 
         st.markdown("---")
 
-        # 2. DEDICATED SECTION: Clean Executive Treemap (Section Level Only - No Division Number Clutter)
-        st.subheader("🌐 PSIC Rev. 5 Macro Market Map (Section Level Share)")
-        st.markdown("Proportional market layout showing the relative volume of classification records across all major economic sections.")
+        # 2. DEDICATED SECTION: Executive Hierarchical Treemap (Clean 2-Level View with Hover Tooltips)
+        st.subheader("🌐 PSIC Rev. 5 Hierarchical Market Map (Treemap Analysis)")
+        st.markdown("Interactive proportion map illustrating economic concentration from Sections down to Divisions (Hover for details).")
 
         df_treemap_data = df_psic.copy()
         df_treemap_data['Filled_Section'] = df_treemap_data['Section'].ffill()
         df_treemap_data['Section_Name'] = df_treemap_data['Filled_Section'].map(section_names).fillna('Other')
+        df_treemap_data['Division_Str'] = df_treemap_data['Division'].astype(str) if 'Division' in df_treemap_data.columns else "N/A"
+        df_treemap_data['Division_Label'] = "Division " + df_treemap_data['Division_Str']
         df_treemap_data['Record_Weight'] = 1
 
-        # Group by Section name so each block represents a clean, single category with its total record count
-        treemap_summary = df_treemap_data.groupby('Section_Name')['Record_Weight'].sum().reset_index(name='Total_Records')
-
         fig_treemap = px.treemap(
-            treemap_summary,
-            path=['Section_Name'],
-            values='Total_Records',
-            color='Total_Records',
-            color_continuous_scale='Blues',
+            df_treemap_data,
+            path=['Section_Name', 'Division_Label'],
+            values='Record_Weight',
+            color='Section_Name',
+            color_discrete_sequence=px.colors.qualitative.Prism,
             template="plotly_dark"
         )
+        # Hide raw crowded text numbers; rely on clean proportional boxes and interactive hover tooltips
+        fig_treemap.update_traces(textinfo="label")
         fig_treemap.update_layout(
-            height=500,
+            height=580,
             margin=dict(l=10, r=10, t=20, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
