@@ -699,13 +699,17 @@ elif nav_selection == "PSIC Industry Classification":
         'U': 'Activities of Extraterritorial Organizations'
     }
 
+    # Reverse lookup dictionary for matching clicked treemap label back to section code
+    reverse_section_names = {v: k for k, v in section_names.items()}
+    reverse_section_names['Other Activities'] = 'Other'
+
     # Ecozone relevance banner
     st.markdown(
         """
         <div style="background-color: #161b22; border-left: 4px solid #58A6FF; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #30363d;">
             <h4 style="margin: 0 0 6px 0; color: #58A6FF; font-size: 15px;">Freeport & Special Economic Zone Sector Alignment</h4>
             <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.5;">
-                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J, K, M)</b>. Explore the structural density and market share distribution below.
+                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J, K, M)</b>. Explore the structural density and market share distribution below. Click any block in the map to inspect its divisions.
             </p>
         </div>
         """,
@@ -776,9 +780,9 @@ elif nav_selection == "PSIC Industry Classification":
 
         st.markdown("---")
 
-        # 2. DEDICATED SECTION: Executive Macro Market Map (Section Level Share)
+        # 2. DEDICATED SECTION: Executive Macro Market Map (Section Level Share with Click Capture)
         st.subheader("🌐 PSIC Rev. 5 Macro Market Map (Section Level Share)")
-        st.markdown("Proportional market layout illustrating the concentration of economic sectors across the master registry.")
+        st.markdown("Proportional market layout. **Click any sector block below** to instantly load its division checklist and records.")
 
         df_treemap_data = df_psic.copy()
         df_treemap_data['Filled_Section'] = df_treemap_data['Section'].ffill()
@@ -805,18 +809,24 @@ elif nav_selection == "PSIC Industry Classification":
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
         )
-        st.plotly_chart(fig_treemap, use_container_width=True)
+
+        # Capture click selection from the treemap
+        treemap_event = st.plotly_chart(fig_treemap, use_container_width=True, on_select="rerun", selection_mode="points")
+
+        # Determine which section was clicked (default to 'Manufacturing' if nothing clicked yet)
+        clicked_section_name = "Manufacturing"
+        if treemap_event and "selection" in treemap_event and treemap_event["selection"]["points"]:
+            point_data = treemap_event["selection"]["points"][0]
+            if "label" in point_data:
+                clicked_section_name = point_data["label"]
+
+        chosen_section_code = reverse_section_names.get(clicked_section_name, 'C')
 
         st.markdown("---")
 
         # 3. INTERACTIVE SECTION DRILL-DOWN & DIVISION CHECKLIST
-        st.subheader("🔍 Section & Division Industry Inspector")
-        st.markdown("Select any economic section below to inspect all its underlying divisions, descriptions, and classified records in detail.")
-
-        # Create dropdown options mapping Section Letter to Clean Name
-        section_options = {f"Section {row['Filled_Section']}: {row['Description']}": row['Filled_Section'] for _, row in sec_counts.iterrows()}
-        selected_sec_label = st.selectbox("Choose Section to Inspect:", options=list(section_options.keys()), index=list(section_options.values()).index('C'))
-        chosen_section_code = section_options[selected_sec_label]
+        st.subheader(f"🔍 Section Inspector: {clicked_section_name} (Section {chosen_section_code})")
+        st.markdown("Inspecting all underlying divisions, descriptions, and classified records for the selected sector.")
 
         # Filter dataset for the chosen section
         df_chosen_sec = df_psic[df_psic['Filled_Section'] == chosen_section_code]
@@ -834,8 +844,8 @@ elif nav_selection == "PSIC Industry Classification":
         # Show Division-level summary table if divisions exist
         df_divs_only = df_chosen_sec[df_chosen_sec['Division'].notnull()][['Division', 'Description']].drop_duplicates().sort_values('Division')
         if not df_divs_only.empty:
-            st.markdown(f"**Division Breakdown for Section {chosen_section_code}:**")
-            st.dataframe(df_divs_only.rename(columns={'Division': 'Division Code', 'Description': 'Division Description'}), use_container_width=True, height=300)
+            st.markdown(f"**Division Checklist & Description Breakdown:**")
+            st.dataframe(df_divs_only.rename(columns={'Division': 'Division Code', 'Description': 'Division Description'}), use_container_width=True, height=320)
 
         st.markdown("---")
 
