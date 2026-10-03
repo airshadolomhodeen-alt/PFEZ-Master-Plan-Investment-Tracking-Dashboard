@@ -675,10 +675,11 @@ elif nav_selection == "PSIC Industry Classification":
     st.markdown(f"Searchable registry of economic sectors, divisions, and industry classes (Total Records: **{len(df_psic):,}**).")
 
     if not df_psic.empty:
-        c1, c2 = st.columns(2)
+        c1, c2 = st.columns([1.2, 1.8])
         with c1:
             sections = sorted([str(s) for s in df_psic['Section'].dropna().unique()])
-            selected_sections = st.multiselect("Filter by Section:", options=sections, default=sections[:3] if len(sections)>=3 else sections)
+            # Fixed: Default to all sections so the complete chart and full 1,791 records load instantly
+            selected_sections = st.multiselect("Filter by Section:", options=sections, default=sections)
         with c2:
             search_query = st.text_input("Search Description or Code:", placeholder="Enter keyword (e.g., manufacturing, transport, fishing)...")
 
@@ -688,19 +689,22 @@ elif nav_selection == "PSIC Industry Classification":
             df_psic_filtered = df_psic_filtered[mask]
 
         st.markdown(f"**Showing {len(df_psic_filtered):,} matching classification records**")
-        st.dataframe(df_psic_filtered, use_container_width=True, height=500)
+        st.dataframe(df_psic_filtered, use_container_width=True, height=520)
     else:
         st.warning("`PSIC_rev 5.xlsx` was not found or contains no readable sheets.")
 
+# ==========================================
+# MODULE: MANPOWER JUSTIFICATION
+# ==========================================
 elif nav_selection == "Manpower Justification":
     st.title("👷 Technical Engineering Manpower Justification")
     st.markdown("Operational necessity analysis justifying the direct appointment of **Engineer V, Engineer III, and two Engineer I** positions.")
 
     st.markdown(
         """
-        <div class="callout-box">
-            <h4 style="margin: 0 0 6px 0; color: #58A6FF;">Core Technical Rationale for Evaluators</h4>
-            <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.5;">
+        <div style="background-color: #161b22; border-left: 4px solid #58A6FF; padding: 16px; border-radius: 6px; margin-bottom: 24px; border: 1px solid #30363d;">
+            <h4 style="margin: 0 0 8px 0; color: #58A6FF; font-size: 16px;">Core Technical Rationale for Evaluators</h4>
+            <p style="margin: 0; color: #C9D1D9; font-size: 13.5px; line-height: 1.6;">
                 Executing complex infrastructure, port extension, environmental baselines, and institutional development across <b>Phase 1 (39 Immediate PAPs) through Phase 4</b> requires an agile, certified technical workforce. Approving the requested headcount—<b>Engineer V (Division Lead), Engineer III (Senior Technical Lead), and two Engineer I positions (Field Supervision & QA/QC Engineers)</b>—ensures robust project supervision, timely procurement, and high-quality civil engineering execution across all 95 PAPs.
             </p>
         </div>
@@ -708,44 +712,36 @@ elif nav_selection == "Manpower Justification":
         unsafe_allow_html=True,
     )
 
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([1, 1.2], gap="large")
 
     with col1:
-        st.markdown("### Requested Engineering Headcount")
+        st.markdown("### Executive Headcount Allocation")
+        st.markdown("Summary of requested engineering personnel distribution:")
         
-        staff_data = pd.DataFrame({
-            "Engineering Position": [
-                "Engineer V (Division Chief / Strategic Lead)",
-                "Engineer III (Senior Project / Technical Lead)",
-                "Engineer I - Position A (Field & Civil Works Supervision)",
-                "Engineer I - Position B (QA/QC & Spatial Data Engineer)"
-            ],
-            "Requested Positions": [1, 1, 1, 1]
-        })
-        
-        fig_staff = go.Figure()
-        fig_staff.add_trace(go.Bar(
-            y=staff_data["Engineering Position"], 
-            x=staff_data["Requested Positions"], 
-            name="Personnel Headcount", 
-            orientation='h', 
-            marker_color='#58A6FF',
-            text=staff_data["Requested Positions"],
-            textposition='auto'
-        ))
-        
-        fig_staff.update_layout(
-            template="plotly_dark",
-            height=340,
-            margin=dict(l=10, r=10, t=20, b=10),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            xaxis=dict(dtick=1, range=[0, 2])
+        # Professional metric cards instead of a basic bar chart for integers of 1 and 2
+        st.markdown(
+            """
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                <div style="background: #111418; border: 1px solid #30363d; padding: 12px 16px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                    <div><strong style="color: #58A6FF;">Engineer V</strong><br><span style="font-size: 12px; color: #8b949e;">Division Chief / Strategic Lead</span></div>
+                    <span style="background: #1f6feb; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px;">1 Slot</span>
+                </div>
+                <div style="background: #111418; border: 1px solid #30363d; padding: 12px 16px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                    <div><strong style="color: #58A6FF;">Engineer III</strong><br><span style="font-size: 12px; color: #8b949e;">Senior Project / Technical Lead</span></div>
+                    <span style="background: #1f6feb; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px;">1 Slot</span>
+                </div>
+                <div style="background: #111418; border: 1px solid #30363d; padding: 12px 16px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                    <div><strong style="color: #58A6FF;">Engineer I (Field)</strong><br><span style="font-size: 12px; color: #8b949e;">Civil Works Supervision</span></div>
+                    <span style="background: #238636; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px;">2 Slots</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
-        st.plotly_chart(fig_staff, use_container_width=True)
 
     with col2:
         st.markdown("### Functional Mandate Breakdown")
+        st.markdown("Core competencies aligned with multi-phase deliverables:")
         
         roles_table = pd.DataFrame({
             "Position Title": ["Engineer V", "Engineer III", "Engineer I (Field)", "Engineer I (QA/QC & GIS)"],
@@ -756,7 +752,7 @@ elif nav_selection == "Manpower Justification":
                 "Quality assurance, structural monitoring documentation, and GIS layer integration"
             ]
         })
-        st.dataframe(roles_table, use_container_width=True, height=340)
+        st.dataframe(roles_table, use_container_width=True, height=230)
 
 # ==========================================
 # MODULE 5: REVENUE ANALYTICS VIEW
