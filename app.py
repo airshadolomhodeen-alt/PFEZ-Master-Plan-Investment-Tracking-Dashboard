@@ -705,7 +705,7 @@ elif nav_selection == "PSIC Industry Classification":
         <div style="background-color: #161b22; border-left: 4px solid #58A6FF; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #30363d;">
             <h4 style="margin: 0 0 6px 0; color: #58A6FF; font-size: 15px;">Freeport & Special Economic Zone Sector Alignment</h4>
             <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.5;">
-                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J, K, M)</b>. Use the dual analytical views below to evaluate structural classification and sub-class densities.
+                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J, K, M)</b>. Explore the structural density of the master dataset below.
             </p>
         </div>
         """,
@@ -726,8 +726,8 @@ elif nav_selection == "PSIC Industry Classification":
         sec_counts['Is_Core_Ecozone'] = sec_counts['Filled_Section'].isin(ecozones_core)
         sec_counts['Color'] = sec_counts['Is_Core_Ecozone'].apply(lambda x: '#58A6FF' if x else '#30363d')
 
-        # Dual Executive Visual Layout: Bar Chart + Heatmap Matrix
-        chart_col1, chart_col2 = st.columns([1.3, 1.2], gap="medium")
+        # 1. PRIMARY VIEW: Executive Bar Chart & Donut Summary Layout
+        chart_col1, chart_col2 = st.columns([1.6, 1], gap="medium")
 
         with chart_col1:
             fig_psic = go.Figure(go.Bar(
@@ -739,7 +739,7 @@ elif nav_selection == "PSIC Industry Classification":
                 textposition='auto'
             ))
             fig_psic.update_layout(
-                title="<b>PSIC Records by Section</b>",
+                title="<b>PSIC Records by Section</b> (Highlighted = Core Ecozone)",
                 template="plotly_dark",
                 height=520,
                 margin=dict(l=20, r=10, t=40, b=10),
@@ -751,34 +751,58 @@ elif nav_selection == "PSIC Industry Classification":
             st.plotly_chart(fig_psic, use_container_width=True)
 
         with chart_col2:
-            # Professional Heatmap Matrix of Section vs. Division Density
-            if 'Division' in df_psic.columns:
-                df_heat = df_psic.dropna(subset=['Filled_Section', 'Division']).copy()
-                df_heat['Division_Str'] = df_heat['Division'].astype(str)
-                heat_pivot = pd.crosstab(df_heat['Filled_Section'], df_heat['Division_Str'])
-                
-                fig_heatmap = px.imshow(
-                    heat_pivot,
-                    labels=dict(x="Division Code", y="PSIC Section", color="Sub-class Density"),
-                    color_continuous_scale="Blues",
-                    aspect="auto"
-                )
-                fig_heatmap.update_layout(
-                    title="<b>Section vs. Division Density Matrix</b>",
-                    template="plotly_dark",
-                    height=520,
-                    margin=dict(l=10, r=10, t=40, b=10),
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    xaxis=dict(showticklabels=False), # Keeps clean executive presentation spacing
-                )
-                st.plotly_chart(fig_heatmap, use_container_width=True)
-            else:
-                st.info("Division column required for matrix heatmap rendering.")
+            sec_counts['Category'] = sec_counts['Is_Core_Ecozone'].apply(lambda x: 'Core Ecozone Sectors' if x else 'Other Sectors')
+            summary_pie = sec_counts.groupby('Category')['Record_Count'].sum().reset_index()
+
+            fig_donut = px.pie(
+                summary_pie, 
+                names='Category', 
+                values='Record_Count', 
+                hole=0.55,
+                color='Category',
+                color_discrete_map={'Core Ecozone Sectors': '#58A6FF', 'Other Sectors': '#30363d'}
+            )
+            fig_donut.update_layout(
+                title="<b>Ecozone vs. Other Share</b>",
+                template="plotly_dark",
+                height=520,
+                margin=dict(l=10, r=10, t=40, b=10),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
+            )
+            fig_donut.update_traces(textposition='inside', textinfo='percent+label')
+            st.plotly_chart(fig_donut, use_container_width=True)
 
         st.markdown("---")
 
-        # Filters and Master Registry Table Section
+        # 2. DEDICATED SECTION: Finviz-Style Hierarchical Market Map (Treemap)
+        st.subheader("🌐 PSIC Rev. 5 Hierarchical Market Map (Treemap Analysis)")
+        st.markdown("Interactive nested proportion map illustrating the volume and structural distribution from Sections down to individual industry classes.")
+
+        df_treemap_data = df_psic.copy()
+        df_treemap_data['Division_Str'] = df_treemap_data['Division'].astype(str) if 'Division' in df_treemap_data.columns else "N/A"
+        df_treemap_data['Record_Weight'] = 1
+
+        fig_treemap = px.treemap(
+            df_treemap_data,
+            path=['Filled_Section', 'Division_Str', 'Description'],
+            values='Record_Weight',
+            color='Filled_Section',
+            color_discrete_sequence=px.colors.qualitative.Prism,
+            template="plotly_dark"
+        )
+        fig_treemap.update_layout(
+            height=580,
+            margin=dict(l=10, r=10, t=20, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+        )
+        st.plotly_chart(fig_treemap, use_container_width=True)
+
+        st.markdown("---")
+
+        # 3. FILTERS AND TABLE REGISTRY
         c1, c2 = st.columns([1.2, 1.8])
         with c1:
             sections = sorted([str(s) for s in df_psic['Section'].dropna().unique()])
