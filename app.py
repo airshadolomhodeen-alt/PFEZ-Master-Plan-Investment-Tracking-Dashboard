@@ -1047,6 +1047,15 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         else:
             st.warning("⚠️ **Caution:** Diminishing returns. Wage costs exceed marginal lease yield.")
 
+        # Automated Equilibrium & ROI Calculations
+        optimal_fte = max(1, int((base_productivity - wage_rate) / 1500))
+        current_mrpl_val = base_productivity - (labor_addition * 1500) if labor_addition > 0 else base_productivity
+        labor_roi = ((current_mrpl_val - wage_rate) / wage_rate) * 100
+
+        st.markdown("---")
+        st.markdown(f"🎯 **Optimal Staffing Equilibrium ($FTE^*$):** `{optimal_fte} FTEs`")
+        st.markdown(f"📈 **Current Labor ROI:** `{labor_roi:.1f}%`")
+
     st.markdown("<br>", unsafe_allow_html=True)
 
     # 3.1 Dynamic MRPL Curve & MC Intersection Chart
@@ -1079,7 +1088,6 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         )
     )
 
-    current_mrpl_val = base_productivity - (labor_addition * 1500) if labor_addition > 0 else base_productivity
     fig_mrpl.add_trace(
         go.Scatter(
             x=[labor_addition],
