@@ -674,13 +674,38 @@ elif nav_selection == "PSIC Industry Classification":
     st.title("🏭 Philippine Standard Industrial Classification (PSIC Rev. 5)")
     st.markdown(f"Searchable registry of economic sectors, divisions, and industry classes (Total Records: **{len(df_psic):,}**).")
 
+    # Official PSIC Section Description Dictionary
+    section_names = {
+        'A': 'Agriculture, Forestry and Fishing',
+        'B': 'Mining and Quarrying',
+        'C': 'Manufacturing',
+        'D': 'Electricity, Gas, Steam & Air Conditioning',
+        'E': 'Water Supply & Waste Management',
+        'F': 'Construction',
+        'G': 'Wholesale and Retail Trade; Repair of Vehicles',
+        'H': 'Transportation and Storage',
+        'I': 'Accommodation and Food Service Activities',
+        'J': 'Information and Communication',
+        'K': 'Financial and Insurance Activities',
+        'L': 'Real Estate Activities',
+        'M': 'Professional, Scientific, and Technical Activities',
+        'N': 'Administrative and Support Service Activities',
+        'O': 'Public Administration & Defense',
+        'P': 'Education',
+        'Q': 'Human Health and Social Work Activities',
+        'R': 'Arts, Entertainment and Recreation',
+        'S': 'Other Service Activities',
+        'T': 'Activities of Households as Employers',
+        'U': 'Activities of Extraterritorial Organizations'
+    }
+
     # Ecozone relevance banner
     st.markdown(
         """
         <div style="background-color: #161b22; border-left: 4px solid #58A6FF; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #30363d;">
             <h4 style="margin: 0 0 6px 0; color: #58A6FF; font-size: 15px;">Freeport & Special Economic Zone Sector Alignment</h4>
             <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.5;">
-                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J & K)</b>. Use the distribution chart and filters below to explore regional investment sectors and associated technical skill requirements.
+                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J, K, M)</b>. Use the chart and filters below to explore regional investment sectors and associated technical skill requirements.
             </p>
         </div>
         """,
@@ -688,22 +713,19 @@ elif nav_selection == "PSIC Industry Classification":
     )
 
     if not df_psic.empty:
-        # Prepare data for summary chart
         df_psic['Filled_Section'] = df_psic['Section'].ffill()
         sec_counts = df_psic.groupby('Filled_Section').size().reset_index(name='Record_Count')
         
-        # Map section letters to short descriptions
-        sec_desc_map = df_psic[df_psic['Section'].notna()].set_index('Section')['Description'].to_dict()
-        sec_counts['Description'] = sec_counts['Filled_Section'].map(sec_desc_map)
-        sec_counts['Display_Label'] = sec_counts['Filled_Section'] + ": " + sec_counts['Description'].str[:35] + "..."
+        # Map clean official section titles
+        sec_counts['Description'] = sec_counts['Filled_Section'].map(section_names).fillna('Other Activities')
+        sec_counts['Display_Label'] = sec_counts['Filled_Section'] + " - " + sec_counts['Description']
         sec_counts = sec_counts.sort_values(by='Record_Count', ascending=True)
 
         # Highlight core ecozone sectors
-        ecozones_core = ['C', 'H', 'G', 'J', 'K', 'N']
+        ecozones_core = ['C', 'H', 'G', 'J', 'K', 'M', 'N']
         sec_counts['Is_Core_Ecozone'] = sec_counts['Filled_Section'].isin(ecozones_core)
         sec_counts['Color'] = sec_counts['Is_Core_Ecozone'].apply(lambda x: '#58A6FF' if x else '#30363d')
 
-        # Interactive Plotly Bar Chart
         fig_psic = go.Figure(go.Bar(
             y=sec_counts['Display_Label'],
             x=sec_counts['Record_Count'],
@@ -715,7 +737,7 @@ elif nav_selection == "PSIC Industry Classification":
         fig_psic.update_layout(
             title="<b>PSIC Classification Breakdown by Section</b> (Highlighted = Core Ecozone Sectors)",
             template="plotly_dark",
-            height=450,
+            height=500,
             margin=dict(l=10, r=10, t=40, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
@@ -726,7 +748,6 @@ elif nav_selection == "PSIC Industry Classification":
 
         st.markdown("---")
 
-        # Filters and Table
         c1, c2 = st.columns([1.2, 1.8])
         with c1:
             sections = sorted([str(s) for s in df_psic['Section'].dropna().unique()])
@@ -743,7 +764,6 @@ elif nav_selection == "PSIC Industry Classification":
         st.dataframe(df_psic_filtered.drop(columns=['Filled_Section']), use_container_width=True, height=450)
     else:
         st.warning("`PSIC_rev 5.xlsx` was not found or contains no readable sheets.")
-
 # ==========================================
 # MODULE: MANPOWER JUSTIFICATION
 # ==========================================
