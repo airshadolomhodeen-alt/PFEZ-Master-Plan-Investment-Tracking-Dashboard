@@ -940,7 +940,6 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         df_rev["Marginal_Revenue"] = df_rev["Collected_Revenue"].diff()
         df_rev["Marginal_Growth_Pct"] = df_rev["Collected_Revenue"].pct_change() * 100
         
-        # Proxy or actual infrastructure labor cost / allocation if available
         if "Infrastructure_Labor_Cost" not in df_rev.columns:
             df_rev["Infrastructure_Labor_Cost"] = df_rev["Non_Traditional"] * 0.15 
             
@@ -969,7 +968,7 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         with col4:
             st.metric(
                 label="Infrastructure Labor Efficiency",
-                value=f"{df_rev['Labor_Productivity'].iloc[-1]:.2f}x",
+                value=f"{df_rev['Labor_Productivity'].iloc[-1]:,.2f}x",
                 delta="MRPL / Wage Ratio"
             )
 
@@ -1004,24 +1003,56 @@ elif nav_selection == "Revenue Analytics & Forecasting":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 3. Revenue Stream Composition & Microeconomic Labor Simulation
-    st.markdown("### Revenue Stream Composition & Infrastructure Labor Simulation")
+    # 3. 2x2 Grid Layout: Revenue Stream & MRPL Curve (Left) vs Simulation Tool & Metrics (Right)
+    st.markdown("### Revenue Stream Composition & Microeconomic Labor Simulation")
     st.markdown("Evaluating non-traditional lease/rental yield against marginal labor inputs ($MRPL = MC_L$ optimization)")
 
     col_sim_l, col_sim_r = st.columns([1.2, 1])
     
+    # LEFT COLUMN: Stacked Bar Chart (Top) & MRPL Curve Chart (Bottom)
     with col_sim_l:
+        st.markdown("##### Revenue Stream Composition")
         fig_stack = go.Figure()
         fig_stack.add_trace(go.Bar(x=df_rev["Date"], y=df_rev["Non_Traditional"], name="Non-Traditional Revenue (Leases/Rentals)", marker_color="#F97316"))
         fig_stack.add_trace(go.Bar(x=df_rev["Date"], y=df_rev["Traditional"], name="Traditional Revenue (Ship Calls)", marker_color="#8B5CF6"))
         fig_stack.update_layout(
-            barmode="stack", template="plotly_dark", height=350, margin=dict(l=10, r=10, t=10, b=10),
+            barmode="stack", template="plotly_dark", height=290, margin=dict(l=10, r=10, t=10, b=10),
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
             yaxis_title="Revenue (PhP)", xaxis_title="Observation Month",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(color="white", size=12))
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(color="white", size=11))
         )
         st.plotly_chart(fig_stack, use_container_width=True)
 
+        st.markdown("##### Marginal Revenue Product of Labor ($MRPL$ vs $MC_L$)")
+        fte_range = np.arange(1, 51)
+        # Dynamic base_productivity/wage values will be pulled from widgets above or defaults
+        base_prod_default = 125000
+        wage_default = 45000
+        
+        # We compute curve based on slider keys or fallback
+        current_prod = st.session_state.get("prod_slider", base_prod_default)
+        current_wage = st.session_state.get("wage_slider", wage_default)
+        current_fte = st.session_state.get("labor_fte_slider", 10)
+
+        mrpl_curve = current_prod - (fte_range * 1500) 
+        mcl_line = [current_wage] * len(fte_range)
+
+        fig_mrpl = go.Figure()
+        fig_mrpl.add_trace(go.Scatter(x=fte_range, y=mrpl_curve, mode="lines", name="MRPL Curve", line=dict(color="#10B981", width=2.5)))
+        fig_mrpl.add_trace(go.Scatter(x=fte_range, y=mcl_line, mode="lines", name="Marginal Cost ($MC_L$)", line=dict(color="#EF4444", width=2, dash="dash")))
+
+        current_mrpl_val = current_prod - (current_fte * 1500) if current_fte > 0 else current_prod
+        fig_mrpl.add_trace(go.Scatter(x=[current_fte], y=[current_mrpl_val], mode="markers", name="Selected Workforce", marker=dict(size=10, color="#38BDF8", symbol="diamond")))
+
+        fig_mrpl.update_layout(
+            template="plotly_dark", height=290, margin=dict(l=10, r=10, t=10, b=10),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            yaxis_title="Value per FTE (PhP)", xaxis_title="Infrastructure Workforce (FTEs)",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(color="white", size=11))
+        )
+        st.plotly_chart(fig_mrpl, use_container_width=True)
+
+    # RIGHT COLUMN: Interactive Microeconomic Labor Decision Tool & Outputs
     with col_sim_r:
         st.markdown("#### ⚖️ Microeconomic Labor Decision Tool")
         
@@ -1049,73 +1080,12 @@ elif nav_selection == "Revenue Analytics & Forecasting":
 
         # Automated Equilibrium & ROI Calculations
         optimal_fte = max(1, int((base_productivity - wage_rate) / 1500))
-        current_mrpl_val = base_productivity - (labor_addition * 1500) if labor_addition > 0 else base_productivity
-        labor_roi = ((current_mrpl_val - wage_rate) / wage_rate) * 100
+        current_mrpl_val_calc = base_productivity - (labor_addition * 1500) if labor_addition > 0 else base_productivity
+        labor_roi = ((current_mrpl_val_calc - wage_rate) / wage_rate) * 100
 
         st.markdown("---")
         st.markdown(f"🎯 **Optimal Staffing Equilibrium ($FTE^*$):** `{optimal_fte} FTEs`")
         st.markdown(f"📈 **Current Labor ROI:** `{labor_roi:.1f}%`")
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # 3.1 Dynamic MRPL Curve & MC Intersection Chart
-    st.markdown("### 📈 Marginal Revenue Product of Labor ($MRPL$ vs $MC_L$) Curve")
-    st.markdown("Visualizing diminishing marginal returns and the optimal employment equilibrium point")
-
-    fte_range = np.arange(1, 51)
-    mrpl_curve = base_productivity - (fte_range * 1500) 
-    mcl_line = [wage_rate] * len(fte_range)
-
-    fig_mrpl = go.Figure()
-    
-    fig_mrpl.add_trace(
-        go.Scatter(
-            x=fte_range,
-            y=mrpl_curve,
-            mode="lines",
-            name="MRPL Curve",
-            line=dict(color="#10B981", width=3)
-        )
-    )
-    
-    fig_mrpl.add_trace(
-        go.Scatter(
-            x=fte_range,
-            y=mcl_line,
-            mode="lines",
-            name="Marginal Cost of Labor ($MC_L$)",
-            line=dict(color="#EF4444", width=2, dash="dash")
-        )
-    )
-
-    fig_mrpl.add_trace(
-        go.Scatter(
-            x=[labor_addition],
-            y=[current_mrpl_val],
-            mode="markers",
-            name="Selected Workforce Level",
-            marker=dict(size=12, color="#38BDF8", symbol="diamond")
-        )
-    )
-
-    fig_mrpl.update_layout(
-        template="plotly_dark",
-        height=320,
-        margin=dict(l=10, r=10, t=10, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        yaxis_title="Value per FTE (PhP)",
-        xaxis_title="Infrastructure Workforce (FTEs)",
-        legend=dict(
-            orientation="h", 
-            yanchor="bottom", 
-            y=1.02, 
-            xanchor="center", 
-            x=0.5,
-            font=dict(color="white", size=12)  # Bright white legend font for high contrast
-        )
-    )
-    st.plotly_chart(fig_mrpl, use_container_width=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
