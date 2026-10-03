@@ -705,7 +705,7 @@ elif nav_selection == "PSIC Industry Classification":
         <div style="background-color: #161b22; border-left: 4px solid #58A6FF; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #30363d;">
             <h4 style="margin: 0 0 6px 0; color: #58A6FF; font-size: 15px;">Freeport & Special Economic Zone Sector Alignment</h4>
             <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.5;">
-                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J, K, M)</b>. Explore the structural density of the master dataset below.
+                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J, K, M)</b>. Explore the structural density and hierarchical distribution of the master dataset below.
             </p>
         </div>
         """,
@@ -776,19 +776,21 @@ elif nav_selection == "PSIC Industry Classification":
 
         st.markdown("---")
 
-        # 2. DEDICATED SECTION: Finviz-Style Hierarchical Market Map (Treemap)
+        # 2. DEDICATED SECTION: Clean Executive Treemap (Section -> Division Level Only)
         st.subheader("🌐 PSIC Rev. 5 Hierarchical Market Map (Treemap Analysis)")
-        st.markdown("Interactive nested proportion map illustrating the volume and structural distribution from Sections down to individual industry classes.")
+        st.markdown("Interactive proportion map illustrating economic concentration from Sections down to Divisions.")
 
         df_treemap_data = df_psic.copy()
+        df_treemap_data['Filled_Section'] = df_treemap_data['Section'].ffill()
+        df_treemap_data['Section_Name'] = df_treemap_data['Filled_Section'].map(section_names).fillna('Other')
         df_treemap_data['Division_Str'] = df_treemap_data['Division'].astype(str) if 'Division' in df_treemap_data.columns else "N/A"
         df_treemap_data['Record_Weight'] = 1
 
         fig_treemap = px.treemap(
             df_treemap_data,
-            path=['Filled_Section', 'Division_Str', 'Description'],
+            path=['Section_Name', 'Division_Str'],
             values='Record_Weight',
-            color='Filled_Section',
+            color='Section_Name',
             color_discrete_sequence=px.colors.qualitative.Prism,
             template="plotly_dark"
         )
