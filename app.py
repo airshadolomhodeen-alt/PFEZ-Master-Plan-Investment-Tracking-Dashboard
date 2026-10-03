@@ -998,7 +998,7 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         template="plotly_dark", height=380, margin=dict(l=10, r=10, t=10, b=10),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         yaxis_title="Revenue (PhP Millions)", xaxis_title="Observation Month",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(color="white", size=12))
     )
     st.plotly_chart(fig_hist, use_container_width=True)
 
@@ -1018,7 +1018,7 @@ elif nav_selection == "Revenue Analytics & Forecasting":
             barmode="stack", template="plotly_dark", height=350, margin=dict(l=10, r=10, t=10, b=10),
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
             yaxis_title="Revenue (PhP)", xaxis_title="Observation Month",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(color="white", size=12))
         )
         st.plotly_chart(fig_stack, use_container_width=True)
 
@@ -1098,7 +1098,14 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         plot_bgcolor="rgba(0,0,0,0)",
         yaxis_title="Value per FTE (PhP)",
         xaxis_title="Infrastructure Workforce (FTEs)",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+        legend=dict(
+            orientation="h", 
+            yanchor="bottom", 
+            y=1.02, 
+            xanchor="center", 
+            x=0.5,
+            font=dict(color="white", size=12)  # Bright white legend font for high contrast
+        )
     )
     st.plotly_chart(fig_mrpl, use_container_width=True)
 
@@ -1125,7 +1132,7 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         template="plotly_dark", height=380, margin=dict(l=10, r=10, t=20, b=10),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         yaxis_title="Annual Revenue (PhP Millions)", xaxis_title="Forecast Year",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(color="white", size=12))
     )
     st.plotly_chart(fig_fore, use_container_width=True)
 # ==========================================
