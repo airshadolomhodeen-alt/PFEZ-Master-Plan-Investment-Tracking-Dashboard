@@ -705,7 +705,7 @@ elif nav_selection == "PSIC Industry Classification":
         <div style="background-color: #161b22; border-left: 4px solid #58A6FF; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #30363d;">
             <h4 style="margin: 0 0 6px 0; color: #58A6FF; font-size: 15px;">Freeport & Special Economic Zone Sector Alignment</h4>
             <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.5;">
-                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J, K, M)</b>. Use the chart and filters below to explore regional investment sectors and associated technical skill requirements.
+                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J, K, M)</b>. Use the dual analytical views below to evaluate structural classification and sub-class densities.
             </p>
         </div>
         """,
@@ -726,28 +726,59 @@ elif nav_selection == "PSIC Industry Classification":
         sec_counts['Is_Core_Ecozone'] = sec_counts['Filled_Section'].isin(ecozones_core)
         sec_counts['Color'] = sec_counts['Is_Core_Ecozone'].apply(lambda x: '#58A6FF' if x else '#30363d')
 
-        fig_psic = go.Figure(go.Bar(
-            y=sec_counts['Display_Label'],
-            x=sec_counts['Record_Count'],
-            orientation='h',
-            marker=dict(color=sec_counts['Color']),
-            text=sec_counts['Record_Count'],
-            textposition='auto'
-        ))
-        fig_psic.update_layout(
-            title="<b>PSIC Classification Breakdown by Section</b> (Highlighted = Core Ecozone Sectors)",
-            template="plotly_dark",
-            height=580,
-            margin=dict(l=40, r=20, t=50, b=20),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            xaxis=dict(title="Number of Records", gridcolor="#30363d"),
-            yaxis=dict(title="", automargin=True)
-        )
-        st.plotly_chart(fig_psic, use_container_width=True)
+        # Dual Executive Visual Layout: Bar Chart + Heatmap Matrix
+        chart_col1, chart_col2 = st.columns([1.3, 1.2], gap="medium")
+
+        with chart_col1:
+            fig_psic = go.Figure(go.Bar(
+                y=sec_counts['Display_Label'],
+                x=sec_counts['Record_Count'],
+                orientation='h',
+                marker=dict(color=sec_counts['Color']),
+                text=sec_counts['Record_Count'],
+                textposition='auto'
+            ))
+            fig_psic.update_layout(
+                title="<b>PSIC Records by Section</b>",
+                template="plotly_dark",
+                height=520,
+                margin=dict(l=20, r=10, t=40, b=10),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                xaxis=dict(title="Number of Records", gridcolor="#30363d"),
+                yaxis=dict(title="", automargin=True)
+            )
+            st.plotly_chart(fig_psic, use_container_width=True)
+
+        with chart_col2:
+            # Professional Heatmap Matrix of Section vs. Division Density
+            if 'Division' in df_psic.columns:
+                df_heat = df_psic.dropna(subset=['Filled_Section', 'Division']).copy()
+                df_heat['Division_Str'] = df_heat['Division'].astype(str)
+                heat_pivot = pd.crosstab(df_heat['Filled_Section'], df_heat['Division_Str'])
+                
+                fig_heatmap = px.imshow(
+                    heat_pivot,
+                    labels=dict(x="Division Code", y="PSIC Section", color="Sub-class Density"),
+                    color_continuous_scale="Blues",
+                    aspect="auto"
+                )
+                fig_heatmap.update_layout(
+                    title="<b>Section vs. Division Density Matrix</b>",
+                    template="plotly_dark",
+                    height=520,
+                    margin=dict(l=10, r=10, t=40, b=10),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    xaxis=dict(showticklabels=False), # Keeps clean executive presentation spacing
+                )
+                st.plotly_chart(fig_heatmap, use_container_width=True)
+            else:
+                st.info("Division column required for matrix heatmap rendering.")
 
         st.markdown("---")
 
+        # Filters and Master Registry Table Section
         c1, c2 = st.columns([1.2, 1.8])
         with c1:
             sections = sorted([str(s) for s in df_psic['Section'].dropna().unique()])
@@ -762,14 +793,6 @@ elif nav_selection == "PSIC Industry Classification":
 
         st.markdown(f"**Showing {len(df_psic_filtered):,}/{len(df_psic):,} matching classification records**")
         st.dataframe(df_psic_filtered.drop(columns=['Filled_Section']), use_container_width=True, height=450)
-
-        # Download button for filtered results
-        st.download_button(
-            label="📥 Export Filtered PSIC Data (CSV)",
-            data=df_psic_filtered.drop(columns=['Filled_Section']).to_csv(index=False).encode('utf-8'),
-            file_name="PFEZ_PSIC_Filtered_Sectors.csv",
-            mime="text/csv",
-        )
     else:
         st.warning("`PSIC_rev 5.xlsx` was not found or contains no readable sheets.")
 # ==========================================
