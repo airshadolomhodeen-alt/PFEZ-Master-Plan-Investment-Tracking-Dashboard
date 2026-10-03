@@ -776,62 +776,37 @@ elif nav_selection == "PSIC Industry Classification":
 
         st.markdown("---")
 
-        # 2. DEDICATED SECTION: Executive Hierarchical Treemap (Section -> Division with Descriptions)
-        st.subheader("🌐 PSIC Rev. 5 Hierarchical Market Map (Treemap Analysis)")
-        st.markdown("Interactive proportion map illustrating economic sectors from Sections down to Division descriptions.")
+        # 2. DEDICATED SECTION: Executive-Ready Macro Treemap (Section Level Only)
+        st.subheader("🌐 PSIC Rev. 5 Macro Market Map (Section Level Share)")
+        st.markdown("Proportional market layout illustrating the concentration of economic sectors across the master registry.")
 
         df_treemap_data = df_psic.copy()
         df_treemap_data['Filled_Section'] = df_treemap_data['Section'].ffill()
-        df_treemap_data['Section_Name'] = df_treemap_data['Filled_Section'].map(section_names).fillna('Other')
-        
-        # Look for the division description column dynamically or construct it cleanly
-        # Assuming your dataframe has a column for division name/description (e.g., 'Division_Name' or 'Sub-Section' etc.)
-        # If the column name varies, we fall back to combining code and available description text:
-        if 'Division_Description' in df_treemap_data.columns:
-            df_treemap_data['Div_Display'] = df_treemap_data['Division'].astype(str) + " - " + df_treemap_data['Division_Description'].astype(str)
-        elif 'Description' in df_treemap_data.columns:
-            # If description column exists in dataset, use it alongside division code
-            df_treemap_data['Div_Display'] = df_treemap_data['Division'].astype(str) + ": " + df_treemap_data['Description'].astype(str).str.slice(0, 30)
-        else:
-            df_treemap_data['Div_Display'] = "Division " + df_treemap_data['Division'].astype(str)
-
+        df_treemap_data['Section_Name'] = df_treemap_data['Filled_Section'].map(section_names).fillna('Other Activities')
         df_treemap_data['Record_Weight'] = 1
 
+        # Aggregate cleanly by Section Name so tiles are uncluttered and fully readable
+        treemap_summary = df_treemap_data.groupby('Section_Name')['Record_Weight'].sum().reset_index(name='Total_Records')
+
         fig_treemap = px.treemap(
-            df_treemap_data,
-            path=['Section_Name', 'Div_Display'],
-            values='Record_Weight',
-            color='Section_Name',
-            color_discrete_sequence=px.colors.qualitative.Prism,
+            treemap_summary,
+            path=['Section_Name'],
+            values='Total_Records',
+            color='Total_Records',
+            color_continuous_scale='Blues',
             template="plotly_dark"
         )
+        fig_treemap.update_traces(
+            textinfo="label+value",
+            textfont=dict(size=14, family="Inter, sans-serif")
+        )
         fig_treemap.update_layout(
-            height=600,
+            height=540,
             margin=dict(l=10, r=10, t=20, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
         )
         st.plotly_chart(fig_treemap, use_container_width=True)
-
-        st.markdown("---")
-
-        # 3. FILTERS AND TABLE REGISTRY
-        c1, c2 = st.columns([1.2, 1.8])
-        with c1:
-            sections = sorted([str(s) for s in df_psic['Section'].dropna().unique()])
-            selected_sections = st.multiselect("Filter by Section:", options=sections, default=sections)
-        with c2:
-            search_query = st.text_input("Search Description or Code:", placeholder="Enter keyword (e.g., manufacturing, transport, port, fishing)...")
-
-        df_psic_filtered = df_psic[df_psic['Section'].astype(str).isin(selected_sections)]
-        if search_query:
-            mask = df_psic_filtered.astype(str).apply(lambda row: row.str.contains(search_query, case=False, na=False).any(), axis=1)
-            df_psic_filtered = df_psic_filtered[mask]
-
-        st.markdown(f"**Showing {len(df_psic_filtered):,}/{len(df_psic):,} matching classification records**")
-        st.dataframe(df_psic_filtered.drop(columns=['Filled_Section']), use_container_width=True, height=450)
-    else:
-        st.warning("`PSIC_rev 5.xlsx` was not found or contains no readable sheets.")
 # ==========================================
 # MODULE: MANPOWER JUSTIFICATION
 # ==========================================
