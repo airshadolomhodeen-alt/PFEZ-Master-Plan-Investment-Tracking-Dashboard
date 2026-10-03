@@ -954,10 +954,12 @@ elif nav_selection == "Revenue Analytics & Forecasting":
                 delta=f"{df_rev['Marginal_Growth_Pct'].iloc[-1]:.1f}% MoM"
             )
         with col2:
+            marginal_val = df_rev['Marginal_Revenue'].iloc[-1]
             st.metric(
                 label="Marginal Revenue (ΔTR)",
-                value=f"PhP {df_rev['Marginal_Revenue'].iloc[-1]:,.2f}",
-                delta="MoM Increment"
+                value=f"PhP {marginal_val:,.2f}",
+                delta=f"{marginal_val:,.2f} MoM",
+                delta_color="normal"  # Automatically handles green up-arrow or red down-arrow
             )
         with col3:
             st.metric(
@@ -1025,11 +1027,9 @@ elif nav_selection == "Revenue Analytics & Forecasting":
 
         st.markdown("##### Marginal Revenue Product of Labor ($MRPL$ vs $MC_L$)")
         fte_range = np.arange(1, 51)
-        # Dynamic base_productivity/wage values will be pulled from widgets above or defaults
         base_prod_default = 125000
         wage_default = 45000
         
-        # We compute curve based on slider keys or fallback
         current_prod = st.session_state.get("prod_slider", base_prod_default)
         current_wage = st.session_state.get("wage_slider", wage_default)
         current_fte = st.session_state.get("labor_fte_slider", 10)
