@@ -112,6 +112,7 @@ def load_masterplan_data():
         df['Cost_PhP'] = df['ESTIMATE AMOUNT'].apply(parse_amount)
         df['Cost_PhP_B'] = df['Cost_PhP'] / 1e9
 
+        # Phase & PCM Assignment Mapping
         def assign_phase(p_no):
             if p_no <= 39:
                 return "Phase 1 (2026–2030)"
@@ -199,29 +200,24 @@ def load_revenue_data():
             "Collected_Revenue": 2.2e6
         })
 
-@st.cache_data
-def load_psic_data():
-    file_path = "PSIC_Revision_5.csv"
-    if os.path.exists(file_path):
-        try:
-            df = pd.read_csv(file_path, encoding="latin1")
-        except Exception:
-            df = pd.read_csv(file_path, encoding="cp1252")
-    elif os.path.exists("PSIC_rev 5.xlsx"):
-        df = pd.read_excel("PSIC_rev 5.xlsx", sheet_name=0, engine="openpyxl")
-    else:
-        try:
-            github_url = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/PSIC_Revision_5.csv"
-            df = pd.read_csv(github_url)
-        except Exception:
-            df = pd.DataFrame(columns=['Section', 'Division', 'Group', 'Class', 'Sub-Class', 'Description'])
-            
-    df.columns = [c.strip() for c in df.columns]
-    return df
-
 df_master = load_masterplan_data()
 df_rev = load_revenue_data()
+
+@st.cache_data
+def load_psic_data():
+    file_path = "PSIC_rev 5.xlsx"
+    if os.path.exists(file_path):
+        try:
+            df = pd.read_excel(file_path, sheet_name="Detailed Structure", engine="openpyxl")
+            df.columns = [str(c).strip() for c in df.columns]
+            return df
+        except Exception as e:
+            return pd.DataFrame()
+    else:
+        return pd.DataFrame(columns=['Section', 'Division', 'Group', 'Class', 'Sub-Class', 'Description'])
+
 df_psic = load_psic_data()
+
 
 # ==========================================
 # 3. TOP EXECUTIVE BANNER
@@ -254,6 +250,7 @@ nav_selection = st.sidebar.radio(
         "Dashboard Home",
         "Investment Phasing (Phases 1–4)",
         "Master Plan Projects Directory",
+        "PSIC Industry Classification",
         "Manpower Justification",
         "Revenue Analytics & Forecasting",
         "Spatial Map Viewer",
@@ -637,6 +634,31 @@ elif nav_selection == "Master Plan Projects Directory":
     )
 
 # ==========================================
+# MODULE: PSIC INDUSTRY CLASSIFICATION
+# ==========================================
+elif nav_selection == "PSIC Industry Classification":
+    st.title("🏭 Philippine Standard Industrial Classification (PSIC Rev. 5)")
+    st.markdown(f"Searchable registry of economic sectors, divisions, and industry classes (Total Records: **{len(df_psic):,}**).")
+
+    if not df_psic.empty:
+        c1, c2 = st.columns(2)
+        with c1:
+            sections = sorted([str(s) for s in df_psic['Section'].dropna().unique()])
+            selected_sections = st.multiselect("Filter by Section:", options=sections, default=sections[:3] if len(sections)>=3 else sections)
+        with c2:
+            search_query = st.text_input("Search Description or Code:", placeholder="Enter keyword (e.g., manufacturing, transport, fishing)...")
+
+        df_psic_filtered = df_psic[df_psic['Section'].astype(str).isin(selected_sections)]
+        if search_query:
+            mask = df_psic_filtered.astype(str).apply(lambda row: row.str.contains(search_query, case=False, na=False).any(), axis=1)
+            df_psic_filtered = df_psic_filtered[mask]
+
+        st.markdown(f"**Showing {len(df_psic_filtered):,} matching classification records**")
+        st.dataframe(df_psic_filtered, use_container_width=True, height=500)
+    else:
+        st.warning("`PSIC_rev 5.xlsx` was not found or contains no readable sheets.")
+
+# ==========================================
 # MODULE 4: MANPOWER JUSTIFICATION VIEW
 # ==========================================
 elif nav_selection == "Manpower Justification":
@@ -705,129 +727,192 @@ elif nav_selection == "Manpower Justification":
         })
         st.dataframe(roles_table, use_container_width=True, height=340)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("---")
-    
-    # ==========================================
-    # PEZA STRATEGIC WORKFORCE & PSIC ALIGNMENT MATRIX
-    # ==========================================
-    st.markdown("### 🎯 PEZA Strategic Workforce & PSIC Alignment Matrix")
-    st.markdown("Mapping PFEZ technical manpower requirements against national Philippine Standard Industrial Classification (PSIC Rev. 5) high-demand special economic zone clusters.")
-
-    clusters_data = [
-        {
-            "Cluster": "Cluster A: AI & Industry 4.0 Technologies",
-            "Color": "#58A6FF",
-            "Codes": [6290, 6310],
-            "Demand_Index": 92.5
-        },
-        {
-            "Cluster": "Cluster B: Advanced Manufacturing & Semiconductors",
-            "Color": "#F59E0B",
-            "Codes": [26191, 28295],
-            "Demand_Index": 88.0
-        },
-        {
-            "Cluster": "Cluster C: Next-Gen IT-BPM & Call Centers",
-            "Color": "#8B5CF6",
-            "Codes": [8220],
-            "Demand_Index": 95.0
-        },
-        {
-            "Cluster": "Cluster D: Smart Logistics & Infrastructure",
-            "Color": "#10B981",
-            "Codes": [52103, 52291],
-            "Demand_Index": 85.5
-        }
-    ]
-
-    psic_rows = []
-    for c in clusters_data:
-        matched = df_psic[
-            (df_psic['Class'].isin(c["Codes"])) | 
-            (df_psic['Sub-Class'].isin(c["Codes"]))
-        ]
-        desc = "; ".join(matched['Description'].dropna().astype(str).tolist())
-        psic_rows.append({
-            "Strategic Cluster": c["Cluster"],
-            "National SEZ Labor Demand Index": c["Demand_Index"],
-            "Color": c["Color"],
-            "Matched PSIC Descriptions": desc if desc else "PEZA Priority Alignment"
-        })
-
-    df_psic_chart = pd.DataFrame(psic_rows)
-
-    m_col1, m_col2 = st.columns([1.3, 1])
-
-    with m_col1:
-        fig_psic_bar = go.Figure()
-        for idx, row in df_psic_chart.iterrows():
-            fig_psic_bar.add_trace(go.Bar(
-                x=[row["National SEZ Labor Demand Index"]],
-                y=[row["Strategic Cluster"]],
-                orientation='h',
-                marker=dict(color=row["Color"]),
-                text=[f"{row['National SEZ Labor Demand Index']}%"],
-                textposition='auto',
-                showlegend=False
-            ))
-        fig_psic_bar.update_layout(
-            template="plotly_dark",
-            height=320,
-            margin=dict(l=10, r=10, t=10, b=10),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            xaxis=dict(title="SEZ Labor Demand Index (%)", range=[0, 100]),
-            yaxis=dict(autorange="reversed")
-        )
-        st.plotly_chart(fig_psic_bar, use_container_width=True)
-
-    with m_col2:
-        st.markdown(
-            """
-            <div style="background-color: #161B22; border: 1px solid #30363D; padding: 14px; border-radius: 8px;">
-                <h4 style="color: #58A6FF; margin-top: 0; font-size: 14px;">PSIC Rev. 5 Strategic Alignment</h4>
-                <p style="color: #C9D1D9; font-size: 12px; line-height: 1.5;">
-                    The requested engineering positions (Engineer V, III, and I) directly support the national <b>PSIC Rev. 5</b> industry clusters prioritized by PEZA. Ensuring technical manpower readiness guarantees seamless infrastructure development for AI, advanced manufacturing, IT-BPM, and smart logistics zones.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
 # ==========================================
-# MODULE 5: REVENUE ANALYTICS & FORECASTING
+# MODULE 5: REVENUE ANALYTICS VIEW
 # ==========================================
 elif nav_selection == "Revenue Analytics & Forecasting":
-    st.title("📈 Revenue Analytics & Financial Forecasting")
-    st.markdown("Detailed historical collection analysis and trend forecasting based on `REVENUE.xlsx` data.")
+    st.title("📊 Revenue Analytics & Forecasting")
+    st.markdown("Executive financial tracking, stream decomposition, and strategic long-term forecast models.")
 
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric("Total Collected Revenue", f"PhP {df_rev['Collected_Revenue'].sum()/1e6:.2f}M", "2024–2026 Baseline")
-    with c2:
-        st.metric("Average Monthly Collection", f"PhP {df_rev['Collected_Revenue'].mean()/1e6:.2f}M", "Per Month Average")
-    with c3:
-        st.metric("BTO Remittance Total", f"PhP {df_rev['BTO_Remittance'].sum()/1e6:.2f}M", "Cumulative BTO")
+    st.markdown("### Historical Revenue Time Series & Trend Analysis")
+    st.markdown("Monthly performance, rolling momentum, linear trend, and statistical control limits")
 
-    st.markdown("---")
+    x_numeric = np.arange(len(df_rev))
+    y_vals = df_rev["Collected_Revenue"].values
+    mean_val = np.mean(y_vals)
+    std_val = np.std(y_vals)
     
-    fig_rev = px.line(
-        df_rev,
-        x="Date",
-        y=["Collected_Revenue", "Traditional", "Non_Traditional", "BTO_Remittance"],
-        title="Revenue Streams Over Time",
-        template="plotly_dark",
-        height=400
+    slope, intercept = np.polyfit(x_numeric, y_vals, 1)
+    trend_line = slope * x_numeric + intercept
+    
+    ma_3m = pd.Series(y_vals).rolling(window=3, min_periods=1).mean().values
+
+    fig_hist = go.Figure()
+    
+    fig_hist.add_trace(
+        go.Scatter(
+            x=df_rev["Date"],
+            y=[mean_val] * len(df_rev),
+            mode="lines",
+            name="Historical Mean ± 1σ",
+            line=dict(color="#238636", width=1.5, dash="dash")
+        )
     )
-    fig_rev.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-    st.plotly_chart(fig_rev, use_container_width=True)
+    
+    fig_hist.add_trace(
+        go.Scatter(
+            x=df_rev["Date"],
+            y=trend_line,
+            mode="lines",
+            name="OLS Trend",
+            line=dict(color="#10B981", width=2)
+        )
+    )
+    
+    fig_hist.add_trace(
+        go.Scatter(
+            x=df_rev["Date"],
+            y=ma_3m,
+            mode="lines",
+            name="3-Month Moving Average",
+            line=dict(color="#F59E0B", width=2)
+        )
+    )
+    
+    fig_hist.add_trace(
+        go.Scatter(
+            x=df_rev["Date"],
+            y=y_vals,
+            mode="lines+markers",
+            name="Actual Revenue",
+            line=dict(color="#38BDF8", width=2.5),
+            marker=dict(size=5)
+        )
+    )
+
+    fig_hist.add_annotation(
+        x=df_rev["Date"].iloc[-1],
+        y=2.5e6,
+        text="Target: PhP 2.50M",
+        showarrow=False,
+        xshift=40,
+        font=dict(color="#EF4444", size=11)
+    )
+
+    fig_hist.update_layout(
+        template="plotly_dark",
+        height=380,
+        margin=dict(l=10, r=10, t=10, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        yaxis_title="Revenue (PhP Millions)",
+        xaxis_title="Observation Month",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+    )
+    st.plotly_chart(fig_hist, use_container_width=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    st.markdown("### Revenue Stream Composition")
+    st.markdown("Monthly breakdown between Traditional core operations and Non-Traditional lease/rental assets")
+
+    fig_stack = go.Figure()
+    fig_stack.add_trace(
+        go.Bar(
+            x=df_rev["Date"],
+            y=df_rev["Non_Traditional"],
+            name="Non-Traditional Revenue (Leases/Rentals)",
+            marker_color="#F97316"
+        )
+    )
+    fig_stack.add_trace(
+        go.Bar(
+            x=df_rev["Date"],
+            y=df_rev["Traditional"],
+            name="Traditional Revenue (Ship Calls)",
+            marker_color="#8B5CF6"
+        )
+    )
+
+    fig_stack.update_layout(
+        barmode="stack",
+        template="plotly_dark",
+        height=380,
+        margin=dict(l=10, r=10, t=10, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        yaxis_title="Revenue (PhP Millions)",
+        xaxis_title="Observation Month",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+    )
+    st.plotly_chart(fig_stack, use_container_width=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    st.markdown("### Long-Term Integrated Revenue Forecast (2026–2040)")
+    st.markdown("Strategic comparison between Business-As-Usual baseline and Master Plan execution")
+
+    forecast_years = list(range(2026, 2041))
+    bau_vals = [40 + (y - 2026) * 1.5 for y in forecast_years]
+    master_vals = [43 + (y - 2026) * 4.2 + (0 if y < 2028 else (y - 2027) * 1.8) for y in forecast_years]
+
+    fig_fore = go.Figure()
+    
+    fig_fore.add_trace(
+        go.Scatter(
+            x=forecast_years,
+            y=master_vals,
+            mode='lines',
+            name='Incremental Revenue Potential',
+            fill='tozeroy',
+            fillcolor='rgba(16, 185, 129, 0.15)',
+            line=dict(color='rgba(16, 185, 129, 0)', width=0),
+            showlegend=True
+        )
+    )
+
+    fig_fore.add_trace(
+        go.Scatter(
+            x=forecast_years,
+            y=bau_vals,
+            mode="lines",
+            name="Business-As-Usual (BAU)",
+            line=dict(color="#8B949E", width=2, dash="dash")
+        )
+    )
+    
+    fig_fore.add_trace(
+        go.Scatter(
+            x=forecast_years,
+            y=master_vals,
+            mode="lines+markers",
+            name="Master Plan Integrated Revenue",
+            line=dict(color="#10B981", width=3),
+            marker=dict(size=6)
+        )
+    )
+
+    fig_fore.add_annotation(x=2028, y=master_vals[forecast_years.index(2028)], text="Phase I PAPs Online", showarrow=True, arrowhead=2, ax=0, ay=-30)
+    fig_fore.add_annotation(x=2032, y=master_vals[forecast_years.index(2032)], text="Phase II Port Expansion", showarrow=True, arrowhead=2, ax=0, ay=-30)
+    fig_fore.add_annotation(x=2036, y=master_vals[forecast_years.index(2036)], text="Full Logistics Integration", showarrow=True, arrowhead=2, ax=0, ay=-30)
+
+    fig_fore.update_layout(
+        template="plotly_dark",
+        height=380,
+        margin=dict(l=10, r=10, t=20, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        yaxis_title="Annual Revenue (PhP Millions)",
+        xaxis_title="Forecast Year",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+    )
+    st.plotly_chart(fig_fore, use_container_width=True)
 
 # ==========================================
 # MODULE 6: SPATIAL MAP VIEWER
 # ==========================================
 elif nav_selection == "Spatial Map Viewer":
-    st.title("🗺️️ Spatial Development & Land Use Map Viewer")
+    st.title("🗺 Spatial Development & Land Use Map Viewer")
     st.markdown("Interactive GIS viewer integrating local vector zoning layers and the global economic zone repository.")
 
     map_type = st.radio("Select View Mode:", ["Local QGIS Zoning Layers (Folium)", "Global Open Zone Map (Embedded Iframe)"], horizontal=True)
@@ -875,25 +960,237 @@ elif nav_selection == "Spatial Map Viewer":
             st.warning("No `.geojson` files found in the directory.")
 
 # ==========================================
-# MODULE 7: M&E & RISK MATRIX
+# MODULE 7: M&E & RISK MATRIX (PCM ENHANCED)
 # ==========================================
 elif nav_selection == "M&E & Risk Matrix":
-    st.title("🛡 Monitoring & Evaluation (M&E) & Risk Mitigation Matrix")
-    st.markdown("Strategic framework outlining project risks, mitigation protocols, and monitoring indicators for PFEZ implementation.")
+    st.title("🛡️ Monitoring & Evaluation (M&E) & Risk Matrix")
+    st.markdown(
+        "Project Cycle Management (PCM) framework tracking performance indicators, "
+        "stage-gate execution, and strategic risk mitigation across the PFEZ Master Plan."
+    )
 
-    risk_data = pd.DataFrame({
-        "Risk Factor": [
-            "Delay in Civil Works Procurement",
-            "Budget Allocation Constraints",
-            "Environmental Compliance Bottlenecks",
-            "Manpower Shortage / Technical Delay"
-        ],
-        "Severity": ["High", "High", "Medium", "High"],
-        "Mitigation Strategy": [
-            "Early procurement staging under Phase 1 & engagement of Engineer III/V",
-            "Phased capital deployment tied to actual revenue generation & BTO remittances",
-            "Rigorous pre-construction baseline studies and GIS spatial constraint checks",
-            "Immediate approval of requested engineering headcount (Engineer V, III, I)"
+    tab_risk, tab_logframe, tab_pcm = st.tabs([
+        "⚠️ Strategic Risk Register", 
+        "📋 Logical Framework (Logframe)", 
+        "🔄 PCM Phasing & Stage-Gates"
+    ])
+
+    with tab_risk:
+        st.markdown("### Strategic Risk Identification & Assessment Matrix")
+        
+        risk_data = [
+            {
+                "Risk ID": "RSK-01",
+                "PCM Stage": "5. Implementation & Monitoring",
+                "Category": "Financial & Budget",
+                "Risk Event / Description": "Capital budget delays or slow local revenue remittance hindering Phase 1 execution.",
+                "Probability": "Medium",
+                "Impact": "High",
+                "Risk Score": "HIGH",
+                "Mitigation Strategy": "Establish automated revenue-sharing models; sequence PAPs by ROI priority.",
+                "Owner": "Finance & BEZA Lead"
+            },
+            {
+                "Risk ID": "RSK-02",
+                "PCM Stage": "5. Implementation & Monitoring",
+                "Category": "Technical / Manpower",
+                "Risk Event / Description": "Delay in approving engineering plantilla positions (Engr V, III, I) leading to weak QA/QC oversight.",
+                "Probability": "High",
+                "Impact": "High",
+                "Risk Score": "CRITICAL",
+                "Mitigation Strategy": "Prioritize immediate recruitment justification; deploy interim third-party QA/QC engineering consultants.",
+                "Owner": "Engineering Division"
+            },
+            {
+                "Risk ID": "RSK-03",
+                "PCM Stage": "3. Formulation & Design",
+                "Category": "Environmental & Climate",
+                "Risk Event / Description": "Coastal erosion, storm surges, and sea-level rise impacting port and wharf extension.",
+                "Probability": "Medium",
+                "Impact": "High",
+                "Risk Score": "HIGH",
+                "Mitigation Strategy": "Conduct EIA & climate resilience studies; integrate green infrastructure and mangrove buffers.",
+                "Owner": "Environmental Unit"
+            },
+            {
+                "Risk ID": "RSK-04",
+                "PCM Stage": "1. Programming",
+                "Category": "Governance & Institutional",
+                "Risk Event / Description": "Multi-agency coordination bottlenecks across regional and national agencies (BARMM, BEZA, DPWH).",
+                "Probability": "Medium",
+                "Impact": "Medium",
+                "Risk Score": "MEDIUM",
+                "Mitigation Strategy": "Formalize Inter-Agency Steering Committee with quarterly M&E progress reporting.",
+                "Owner": "Executive Office"
+            },
+            {
+                "Risk ID": "RSK-05",
+                "PCM Stage": "2. Identification",
+                "Category": "Operational & Land Use",
+                "Risk Event / Description": "Land acquisition and right-of-way (ROW) disputes along economic zone boundaries.",
+                "Probability": "Low",
+                "Impact": "High",
+                "Risk Score": "MEDIUM",
+                "Mitigation Strategy": "Execute boundary surveys and formal land relocation frameworks early in Phase 1.",
+                "Owner": "Legal & Land Dept"
+            }
         ]
-    })
-    st.dataframe(risk_data, use_container_width=True, height=350)
+        df_risk = pd.DataFrame(risk_data)
+
+        def style_risk(val):
+            if val == "CRITICAL":
+                return "background-color: #8B0000; color: white; font-weight: bold;"
+            elif val == "HIGH":
+                return "background-color: #B22222; color: white; font-weight: bold;"
+            elif val == "MEDIUM":
+                return "background-color: #D2691E; color: white; font-weight: bold;"
+            return "background-color: #2E8B57; color: white; font-weight: bold;"
+
+        st.dataframe(
+            df_risk.style.map(style_risk, subset=["Risk Score"]),
+            use_container_width=True,
+            height=320
+        )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        r_col1, r_col2 = st.columns(2)
+        
+        with r_col1:
+            st.markdown("#### Risk Severity Breakdown")
+            fig_risk_pie = px.pie(
+                df_risk,
+                names="Risk Score",
+                title="Risk Severity Summary",
+                color="Risk Score",
+                color_discrete_map={
+                    "CRITICAL": "#8B0000",
+                    "HIGH": "#B22222",
+                    "MEDIUM": "#D2691E",
+                    "LOW": "#2E8B57"
+                },
+                template="plotly_dark",
+                hole=0.4
+            )
+            fig_risk_pie.update_layout(margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_risk_pie, use_container_width=True)
+
+        with r_col2:
+            st.markdown("#### Risk Distribution by Domain Category")
+            fig_cat = px.bar(
+                df_risk,
+                x="Category",
+                color="Risk Score",
+                title="Risks per Domain",
+                color_discrete_map={
+                    "CRITICAL": "#8B0000",
+                    "HIGH": "#B22222",
+                    "MEDIUM": "#D2691E",
+                    "LOW": "#2E8B57"
+                },
+                template="plotly_dark"
+            )
+            fig_cat.update_layout(margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_cat, use_container_width=True)
+
+    with tab_logframe:
+        st.markdown("### Master Plan Results & Evaluation Framework (Logframe)")
+        
+        me_data = [
+            {
+                "Level": "1. Goal / Impact",
+                "Objectives & Key Performance Indicators": "Transform PFEZ into a sustainable regional economic hub in BARMM.",
+                "Baseline (2024–2026)": "Baseline Port Operations",
+                "Target (2040)": "PhP 8.524B Infrastructure Capitalized; 15,000 Direct/Indirect Jobs",
+                "Data Source / Verification": "PSA & BEZA Economic Reports",
+                "Reporting Frequency": "5 Years"
+            },
+            {
+                "Level": "2. Outcomes",
+                "Objectives & Key Performance Indicators": "Increased Port Revenue Generation & Logistics Processing Efficiency",
+                "Baseline (2024–2026)": "~PhP 0.082B Historical Cumulative",
+                "Target (2040)": ">PhP 2.0B Annual Revenue Target",
+                "Data Source / Verification": "BEZA Financial Audit / REVENUE.xlsx",
+                "Reporting Frequency": "Annual"
+            },
+            {
+                "Level": "2. Outcomes",
+                "Objectives & Key Performance Indicators": "Phase Execution & Master Plan Compliance",
+                "Baseline (2024–2026)": "0% Master Plan Execution",
+                "Target (2040)": "100% Delivery across 95 PAPs",
+                "Data Source / Verification": "Quarterly Project Inspection Logs",
+                "Reporting Frequency": "Quarterly"
+            },
+            {
+                "Level": "3. Outputs",
+                "Objectives & Key Performance Indicators": "Phase 1 Immediate Infrastructure Deliverables (2026–2030)",
+                "Baseline (2024–2026)": "39 Nominated PAPs",
+                "Target (2030)": "39 PAPs Completed (PhP 0.284B Invested)",
+                "Data Source / Verification": "Engineering QA/QC Field Reports",
+                "Reporting Frequency": "Monthly"
+            },
+            {
+                "Level": "4. Inputs",
+                "Objectives & Key Performance Indicators": "Technical Engineering Manpower & Operational Capacity",
+                "Baseline (2024–2026)": "Understaffed / Proposed",
+                "Target (2026)": "4 Key Positions Appointed (Engr V, III, two I)",
+                "Data Source / Verification": "BEZA Plantilla / HR Records",
+                "Reporting Frequency": "Immediate"
+            }
+        ]
+
+        df_me = pd.DataFrame(me_data)
+        st.dataframe(df_me, use_container_width=True, height=350)
+
+    with tab_pcm:
+        st.markdown("### Project Cycle Management (PCM) Phasing Matrix")
+        
+        pcm_summary = df_master.groupby('Phase').agg(
+            Total_PAPs=('PROJECT NO.', 'count'),
+            Total_Cost_B=('Cost_PhP_B', 'sum')
+        ).reset_index()
+
+        pcm_summary["PCM Stage"] = [
+            "5. Implementation & Monitoring",
+            "3. Formulation & Design",
+            "2. Identification",
+            "1. Programming"
+        ]
+        pcm_summary["Target Year"] = ["2030", "2035", "2038", "2040"]
+        pcm_summary["Monitoring Authority"] = [
+            "BEZA Engineering Division (Phase 1 Lead)",
+            "BEZA Operations & Engineering",
+            "BEZA Strategic Planning Unit",
+            "BEZA Executive Directorate"
+        ]
+
+        st.dataframe(pcm_summary, use_container_width=True, height=250)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("#### Portfolio Phasing Distribution by Capital & Projects Count")
+        
+        pcm_col1, pcm_col2 = st.columns(2)
+        with pcm_col1:
+            fig_pcm_bar = px.bar(
+                pcm_summary,
+                x="Phase",
+                y="Total_Cost_B",
+                color="PCM Stage",
+                title="Capital Investment per PCM Phase (PhP B)",
+                template="plotly_dark",
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig_pcm_bar.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_pcm_bar, use_container_width=True)
+
+        with pcm_col2:
+            fig_pcm_paps = px.pie(
+                pcm_summary,
+                names="Phase",
+                values="Total_PAPs",
+                title="PAPs Count Share per Phase",
+                template="plotly_dark",
+                hole=0.4,
+                color_discrete_sequence=px.colors.qualitative.Safe
+            )
+            fig_pcm_paps.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_pcm_paps, use_container_width=True)
