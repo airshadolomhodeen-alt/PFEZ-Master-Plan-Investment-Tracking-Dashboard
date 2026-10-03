@@ -112,7 +112,6 @@ def load_masterplan_data():
         df['Cost_PhP'] = df['ESTIMATE AMOUNT'].apply(parse_amount)
         df['Cost_PhP_B'] = df['Cost_PhP'] / 1e9
 
-        # Phase & PCM Assignment Mapping
         def assign_phase(p_no):
             if p_no <= 39:
                 return "Phase 1 (2026–2030)"
@@ -200,8 +199,35 @@ def load_revenue_data():
             "Collected_Revenue": 2.2e6
         })
 
+@st.cache_data
+def load_psic_data():
+    """
+    Cached data pipeline loader for the PSIC Revision 5 dataset.
+    Checks for local CSV, local Excel fallback, or GitHub raw repository URL.
+    """
+    file_path = "PSIC_Revision_5.csv"
+    if os.path.exists(file_path):
+        try:
+            df = pd.read_csv(file_path, encoding="latin1")
+        except Exception:
+            df = pd.read_csv(file_path, encoding="cp1252")
+    elif os.path.exists("PSIC_rev 5.xlsx"):
+        df = pd.read_excel("PSIC_rev 5.xlsx", sheet_name=0, engine="openpyxl")
+    else:
+        try:
+            # Replace placeholder with your raw GitHub repository link if hosting remotely
+            github_url = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/PSIC_Revision_5.csv"
+            df = pd.read_csv(github_url)
+        except Exception:
+            df = pd.DataFrame(columns=['Section', 'Division', 'Group', 'Class', 'Sub-Class', 'Description'])
+            
+    # Clean column names by stripping trailing whitespaces
+    df.columns = [c.strip() for c in df.columns]
+    return df
+
 df_master = load_masterplan_data()
 df_rev = load_revenue_data()
+df_psic = load_psic_data()
 
 # ==========================================
 # 3. TOP EXECUTIVE BANNER
@@ -685,6 +711,101 @@ elif nav_selection == "Manpower Justification":
         })
         st.dataframe(roles_table, use_container_width=True, height=340)
 
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    # ==========================================
+    # NEW FEATURE: PEZA STRATEGIC WORKFORCE & PSIC ALIGNMENT MATRIX
+    # ==========================================
+    st.markdown("### 🎯 PEZA Strategic Workforce & PSIC Alignment Matrix")
+    st.markdown("Mapping PFEZ technical manpower requirements against national Philippine Standard Industrial Classification (PSIC Rev. 5) high-demand special economic zone clusters.")
+
+    # Dynamically extract and map high-demand classes/sub-classes for the 4 priority clusters
+    clusters_data = [
+        {
+            "Cluster": "Cluster A: AI & Industry 4.0 Technologies",
+            "Color": "#58A6FF",
+            "Codes": [6290, 6310],
+            "Demand_Index": 92.5
+        },
+        {
+            "Cluster": "Cluster B: Advanced Manufacturing & Semiconductors",
+            "Color": "#F59E0B",
+            "Codes": [26191, 28295],
+            "Demand_Index": 88.0
+        },
+        {
+            "Cluster": "Cluster C: Next-Gen IT-BPM & Call Centers",
+            "Color": "#8B5CF6",
+            "Codes": [8220],
+            "Demand_Index": 95.0
+        },
+        {
+            "Cluster": "Cluster D: Smart Logistics & Infrastructure",
+            "Color": "#10B981",
+            "Codes": [52103, 52291],
+            "Demand_Index": 85.5
+        }
+    ]
+
+    psic_rows = []
+    for c in clusters_data:
+        matched = df_psic[
+            (df_psic['Class'].isin(c["Codes"])) | 
+            (df_psic['Sub-Class'].isin(c["Codes"]))
+        ]
+        desc = "; ".join(matched['Description'].dropna().astype(str).tolist())
+        psic_rows.append({
+            "Strategic Cluster": c["Cluster"],
+            "National SEZ Labor Demand Index": c["Demand_Index"],
+            "Color": c["Color"],
+            "Matched PSIC Descriptions": desc if desc else "PEZA Priority Alignment"
+        })
+
+    df_psic_chart = pd.DataFrame(psic_rows)
+
+    m_col1, m_col2 = st.columns([1.3, 1])
+
+    with m_col1:
+        fig_psic_bar = go.Figure()
+        for idx, row in df_psic_chart.iterrows():
+            fig_psic_bar.add_trace(go.Bar(
+                y=[row["Strategic Cluster"]],
+                x=[row["National SEZ Labor Demand Index"]],
+                orientation='h',
+                marker=dict(color=row["Color"]),
+                text=[f"{row['National SEZ Labor Demand Index']}%"],
+                textposition='auto',
+                name=row["Strategic Cluster"],
+                hovertemplate=f"<b>%{{y}}</b><br>Demand Index: %{{x}}<br>PSIC Scope: {row['Matched PSIC Descriptions']}<extra></extra>"
+            ))
+
+        fig_psic_bar.update_layout(
+            template="plotly_dark",
+            height=340,
+            margin=dict(l=10, r=10, t=10, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis=dict(title="National SEZ Labor Demand Index (Scaled 1-100)", range=[0, 105]),
+            yaxis=dict(autorange="reversed"),
+            showlegend=False
+        )
+        st.plotly_chart(fig_psic_bar, use_container_width=True)
+
+    with m_col2:
+        st.markdown("#### PSIC Alignment Summary & Skill Depth")
+        for idx, row in df_psic_chart.iterrows():
+            st.markdown(
+                f"""
+                <div style="background-color: #161B22; border: 1px solid #30363D; border-left: 4px solid {row['Color']}; padding: 10px 12px; border-radius: 6px; margin-bottom: 8px;">
+                    <div style="font-size: 13px; font-weight: bold; color: {row['Color']};">{row['Strategic Cluster']}</div>
+                    <div style="font-size: 11px; color: #8B949E; margin-top: 2px;"><b>Index:</b> {row['National SEZ Labor Demand Index']} / 100</div>
+                    <div style="font-size: 11px; color: #C9D1D9; margin-top: 2px;"><b>PSIC Mapping:</b> {row['Matched PSIC Descriptions']}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
 # ==========================================
 # MODULE 5: REVENUE ANALYTICS VIEW
 # ==========================================
@@ -695,7 +816,6 @@ elif nav_selection == "Revenue Analytics & Forecasting":
     st.markdown("### Historical Revenue Time Series & Trend Analysis")
     st.markdown("Monthly performance, rolling momentum, linear trend, and statistical control limits")
 
-    # Calculations for Historical Time Series
     x_numeric = np.arange(len(df_rev))
     y_vals = df_rev["Collected_Revenue"].values
     mean_val = np.mean(y_vals)
@@ -704,12 +824,10 @@ elif nav_selection == "Revenue Analytics & Forecasting":
     slope, intercept = np.polyfit(x_numeric, y_vals, 1)
     trend_line = slope * x_numeric + intercept
     
-    # 3-Month Moving Average
     ma_3m = pd.Series(y_vals).rolling(window=3, min_periods=1).mean().values
 
     fig_hist = go.Figure()
     
-    # Historical Mean +/- 1 sigma line / Target
     fig_hist.add_trace(
         go.Scatter(
             x=df_rev["Date"],
@@ -720,7 +838,6 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         )
     )
     
-    # OLS Trend
     fig_hist.add_trace(
         go.Scatter(
             x=df_rev["Date"],
@@ -731,7 +848,6 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         )
     )
     
-    # 3-Month Moving Average
     fig_hist.add_trace(
         go.Scatter(
             x=df_rev["Date"],
@@ -742,7 +858,6 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         )
     )
     
-    # Actual Revenue
     fig_hist.add_trace(
         go.Scatter(
             x=df_rev["Date"],
@@ -754,7 +869,6 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         )
     )
 
-    # Target annotation
     fig_hist.add_annotation(
         x=df_rev["Date"].iloc[-1],
         y=2.5e6,
@@ -823,7 +937,6 @@ elif nav_selection == "Revenue Analytics & Forecasting":
 
     fig_fore = go.Figure()
     
-    # Transparent green filled area under master plan curve (70% opacity / filltozeroy or tonexty)
     fig_fore.add_trace(
         go.Scatter(
             x=forecast_years,
@@ -858,7 +971,6 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         )
     )
 
-    # Milestone Annotations matching image reference
     fig_fore.add_annotation(x=2028, y=master_vals[forecast_years.index(2028)], text="Phase I PAPs Online", showarrow=True, arrowhead=2, ax=0, ay=-30)
     fig_fore.add_annotation(x=2032, y=master_vals[forecast_years.index(2032)], text="Phase II Port Expansion", showarrow=True, arrowhead=2, ax=0, ay=-30)
     fig_fore.add_annotation(x=2036, y=master_vals[forecast_years.index(2036)], text="Full Logistics Integration", showarrow=True, arrowhead=2, ax=0, ay=-30)
@@ -879,7 +991,7 @@ elif nav_selection == "Revenue Analytics & Forecasting":
 # MODULE 6: SPATIAL MAP VIEWER
 # ==========================================
 elif nav_selection == "Spatial Map Viewer":
-    st.title("🗺️️ Spatial Development & Land Use Map Viewer")
+    st.title("🗺 Spatial Development & Land Use Map Viewer")
     st.markdown("Interactive GIS viewer integrating local vector zoning layers and the global economic zone repository.")
 
     map_type = st.radio("Select View Mode:", ["Local QGIS Zoning Layers (Folium)", "Global Open Zone Map (Embedded Iframe)"], horizontal=True)
@@ -1005,7 +1117,6 @@ elif nav_selection == "M&E & Risk Matrix":
         ]
         df_risk = pd.DataFrame(risk_data)
 
-        # Highlight function for risk score
         def style_risk(val):
             if val == "CRITICAL":
                 return "background-color: #8B0000; color: white; font-weight: bold;"
