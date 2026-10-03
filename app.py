@@ -776,29 +776,37 @@ elif nav_selection == "PSIC Industry Classification":
 
         st.markdown("---")
 
-        # 2. DEDICATED SECTION: Executive Hierarchical Treemap (Clean 2-Level View with Hover Tooltips)
+        # 2. DEDICATED SECTION: Executive Hierarchical Treemap (Section -> Division with Descriptions)
         st.subheader("🌐 PSIC Rev. 5 Hierarchical Market Map (Treemap Analysis)")
-        st.markdown("Interactive proportion map illustrating economic concentration from Sections down to Divisions (Hover for details).")
+        st.markdown("Interactive proportion map illustrating economic sectors from Sections down to Division descriptions.")
 
         df_treemap_data = df_psic.copy()
         df_treemap_data['Filled_Section'] = df_treemap_data['Section'].ffill()
         df_treemap_data['Section_Name'] = df_treemap_data['Filled_Section'].map(section_names).fillna('Other')
-        df_treemap_data['Division_Str'] = df_treemap_data['Division'].astype(str) if 'Division' in df_treemap_data.columns else "N/A"
-        df_treemap_data['Division_Label'] = "Division " + df_treemap_data['Division_Str']
+        
+        # Look for the division description column dynamically or construct it cleanly
+        # Assuming your dataframe has a column for division name/description (e.g., 'Division_Name' or 'Sub-Section' etc.)
+        # If the column name varies, we fall back to combining code and available description text:
+        if 'Division_Description' in df_treemap_data.columns:
+            df_treemap_data['Div_Display'] = df_treemap_data['Division'].astype(str) + " - " + df_treemap_data['Division_Description'].astype(str)
+        elif 'Description' in df_treemap_data.columns:
+            # If description column exists in dataset, use it alongside division code
+            df_treemap_data['Div_Display'] = df_treemap_data['Division'].astype(str) + ": " + df_treemap_data['Description'].astype(str).str.slice(0, 30)
+        else:
+            df_treemap_data['Div_Display'] = "Division " + df_treemap_data['Division'].astype(str)
+
         df_treemap_data['Record_Weight'] = 1
 
         fig_treemap = px.treemap(
             df_treemap_data,
-            path=['Section_Name', 'Division_Label'],
+            path=['Section_Name', 'Div_Display'],
             values='Record_Weight',
             color='Section_Name',
             color_discrete_sequence=px.colors.qualitative.Prism,
             template="plotly_dark"
         )
-        # Hide raw crowded text numbers; rely on clean proportional boxes and interactive hover tooltips
-        fig_treemap.update_traces(textinfo="label")
         fig_treemap.update_layout(
-            height=580,
+            height=600,
             margin=dict(l=10, r=10, t=20, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
