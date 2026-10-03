@@ -942,7 +942,6 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         
         # Proxy or actual infrastructure labor cost / allocation if available
         if "Infrastructure_Labor_Cost" not in df_rev.columns:
-            # Simulated benchmark estimation based on non-traditional asset scale
             df_rev["Infrastructure_Labor_Cost"] = df_rev["Non_Traditional"] * 0.15 
             
         df_rev["Labor_Productivity"] = df_rev["Non_Traditional"] / df_rev["Infrastructure_Labor_Cost"]
@@ -1025,21 +1024,83 @@ elif nav_selection == "Revenue Analytics & Forecasting":
 
     with col_sim_r:
         st.markdown("#### ⚖️ Microeconomic Labor Decision Tool")
+        
+        # Interactive Simulation Sliders
         labor_addition = st.slider("Simulate Additional Infrastructure Workforce (FTEs)", 0, 50, 10, key="labor_fte_slider")
-        avg_wage_cost = labor_addition * 45000  # Estimated monthly cost per FTE in PhP
-        est_marginal_lease_gain = labor_addition * 125000  # Marginal revenue product per FTE
+        base_productivity = st.slider("Marginal Product Scaling Factor", 100000, 200000, 125000, step=5000, key="prod_slider")
+        wage_rate = st.slider("Monthly Wage per FTE ($MC_L$, PhP)", 30000, 70000, 45000, step=2500, key="wage_slider")
+
+        # Calculations
+        avg_wage_cost = labor_addition * wage_rate
+        est_marginal_lease_gain = labor_addition * base_productivity
         net_marginal_profit = est_marginal_lease_gain - avg_wage_cost
 
         st.info(
             f"**Marginal Analysis Breakdown:**\n\n"
-            f"- **Added Labor Cost ($MC_L$):** PhP {avg_wage_cost:,.2f}\n"
-            f"- **Added Lease Revenue ($MRPL$):** PhP {est_marginal_lease_gain:,.2f}\n"
+            f"- **Total Labor Cost ($MC_L$):** PhP {avg_wage_cost:,.2f}\n"
+            f"- **Total Lease Revenue ($MRPL$):** PhP {est_marginal_lease_gain:,.2f}\n"
             f"- **Net Marginal Profit:** `PhP {net_marginal_profit:,.2f}`"
         )
+        
         if net_marginal_profit > 0:
-            st.success("✅ **Decision Validated:** $MRPL > MC_L$. Adding infrastructure labor is economically profitable.")
+            st.success("✅ **Decision Validated:** $MRPL > MC_L$. Adding labor is profitable.")
         else:
-            st.warning("⚠️ **Caution:** Diminishing returns. Marginal wage costs exceed incremental lease yield.")
+            st.warning("⚠️ **Caution:** Diminishing returns. Wage costs exceed marginal lease yield.")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # 3.1 Dynamic MRPL Curve & MC Intersection Chart
+    st.markdown("### 📈 Marginal Revenue Product of Labor ($MRPL$ vs $MC_L$) Curve")
+    st.markdown("Visualizing diminishing marginal returns and the optimal employment equilibrium point")
+
+    fte_range = np.arange(1, 51)
+    mrpl_curve = base_productivity - (fte_range * 1500) 
+    mcl_line = [wage_rate] * len(fte_range)
+
+    fig_mrpl = go.Figure()
+    
+    fig_mrpl.add_trace(
+        go.Scatter(
+            x=fte_range,
+            y=mrpl_curve,
+            mode="lines",
+            name="MRPL Curve",
+            line=dict(color="#10B981", width=3)
+        )
+    )
+    
+    fig_mrpl.add_trace(
+        go.Scatter(
+            x=fte_range,
+            y=mcl_line,
+            mode="lines",
+            name="Marginal Cost of Labor ($MC_L$)",
+            line=dict(color="#EF4444", width=2, dash="dash")
+        )
+    )
+
+    current_mrpl_val = base_productivity - (labor_addition * 1500) if labor_addition > 0 else base_productivity
+    fig_mrpl.add_trace(
+        go.Scatter(
+            x=[labor_addition],
+            y=[current_mrpl_val],
+            mode="markers",
+            name="Selected Workforce Level",
+            marker=dict(size=12, color="#38BDF8", symbol="diamond")
+        )
+    )
+
+    fig_mrpl.update_layout(
+        template="plotly_dark",
+        height=320,
+        margin=dict(l=10, r=10, t=10, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        yaxis_title="Value per FTE (PhP)",
+        xaxis_title="Infrastructure Workforce (FTEs)",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+    )
+    st.plotly_chart(fig_mrpl, use_container_width=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -1067,7 +1128,6 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
     )
     st.plotly_chart(fig_fore, use_container_width=True)
-
 # ==========================================
 # MODULE 6: SPATIAL MAP VIEWER
 # ==========================================
