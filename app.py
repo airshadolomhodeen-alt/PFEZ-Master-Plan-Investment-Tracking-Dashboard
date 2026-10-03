@@ -112,7 +112,6 @@ def load_masterplan_data():
         df['Cost_PhP'] = df['ESTIMATE AMOUNT'].apply(parse_amount)
         df['Cost_PhP_B'] = df['Cost_PhP'] / 1e9
 
-        # Phase & PCM Assignment Mapping
         def assign_phase(p_no):
             if p_no <= 39:
                 return "Phase 1 (2026–2030)"
@@ -206,12 +205,15 @@ df_rev = load_revenue_data()
 @st.cache_data
 def load_psic_data():
     file_path = "PSIC_rev 5.xlsx"
+    if not os.path.exists(file_path) and os.path.exists("PSIC_rev 5_2.xlsx"):
+        file_path = "PSIC_rev 5_2.xlsx"
+        
     if os.path.exists(file_path):
         try:
             df = pd.read_excel(file_path, sheet_name="Detailed Structure", engine="openpyxl")
             df.columns = [str(c).strip() for c in df.columns]
             return df
-        except Exception as e:
+        except Exception:
             return pd.DataFrame()
     else:
         return pd.DataFrame(columns=['Section', 'Division', 'Group', 'Class', 'Sub-Class', 'Description'])
@@ -369,7 +371,7 @@ if nav_selection == "Dashboard Home":
                 <div>
                     <h4 style="margin: 0 0 4px 0; color: #58A6FF; font-size: 15px;">STRATEGIC JUSTIFICATION FOR TECHNICAL ENGINEERING MANPOWER EXPANSION</h4>
                     <p style="margin: 0; color: #C9D1D9; font-size: 12px; line-height: 1.5;">
-                        The PFEZ Master Development Plan commits <b>PhP {df_master['Cost_PhP_B'].sum():.3f} Billion</b> across <b>{len(df_master)} Programs and Projects (PAPs)</b> structured into <b>4 Implementation Phases (2026–2040)</b>. Executing <b>Phase 1 (39 Immediate PAPs)</b> requires technical reinforcement: <b>one Engineer V, one Engineer III, and two Engineer I positions</b>. Without direct engineering oversight, project execution delays threaten the foundational works and projected revenue trajectory.
+                        The PFEZ Master Development Plan commits <b>PhP {df_master['Cost_PhP_B'].sum():.3f} Billion</b> across <b>{len(df_master)} Programs and Projects (PAPs)</b> structured into <b>4 Implementation Phases (2026–2040)</b>. Executing <b>Phase 1 (39 Immediate PAPs)</b> requires technical reinforcement: <b>one Engineer V, one Engineer III, and two Engineer I positions</b>. Without direct engineering oversight, project execution delays threaten foundational works and projected revenue trajectories.
                     </p>
                 </div>
             </div>
@@ -634,19 +636,76 @@ elif nav_selection == "Master Plan Projects Directory":
     )
 
 # ==========================================
-# MODULE: PSIC INDUSTRY CLASSIFICATION
+# MODULE: PSIC INDUSTRY CLASSIFICATION (UPGRADED)
 # ==========================================
 elif nav_selection == "PSIC Industry Classification":
     st.title("🏭 Philippine Standard Industrial Classification (PSIC Rev. 5)")
-    st.markdown(f"Searchable registry of economic sectors, divisions, and industry classes (Total Records: **{len(df_psic):,}**).")
+    st.markdown("Comprehensive economic sector intelligence, hierarchical classification structure, and PFEZ industry alignment.")
 
     if not df_psic.empty:
-        c1, c2 = st.columns(2)
+        df_psic['Section_Clean'] = df_psic['Section'].ffill()
+        
+        # Summary Metrics
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            st.metric("Total Records", f"{len(df_psic):,}")
+        with m2:
+            st.metric("Sections", f"{df_psic['Section'].nunique():,}")
+        with m3:
+            st.metric("Divisions", f"{df_psic['Division'].nunique():,}")
+        with m4:
+            st.metric("Groups", f"{df_psic['Group'].nunique():,}")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Visualizations & Alignment Breakdown
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            st.markdown("### 📊 Distribution of Records by PSIC Section")
+            section_summary = df_psic[df_psic['Division'].notna()].groupby('Section_Clean').size().reset_index(name='Count')
+            fig_psic_sec = px.bar(
+                section_summary,
+                x='Section_Clean',
+                y='Count',
+                title="Classification Records per Section",
+                template="plotly_dark",
+                color='Count',
+                color_continuous_scale='Blues',
+                height=350
+            )
+            fig_psic_sec.update_layout(margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_psic_sec, use_container_width=True)
+
+        with col_c2:
+            st.markdown("### 🏢 PFEZ Economic Alignment")
+            st.markdown(
+                """
+                <div class="callout-box" style="height: 318px; overflow-y: auto;">
+                    <h4 style="margin: 0 0 6px 0; color: #58A6FF; font-size: 14px;">Strategic Relevance to PFEZ</h4>
+                    <p style="margin: 0 0 10px 0; color: #C9D1D9; font-size: 12px; line-height: 1.4;">
+                        The PSIC Rev. 5 classification directly supports the <b>Bangsamoro Economic Zone Authority (BEZA)</b> in registering locator enterprises, classifying manufacturing, Halal processing, warehousing, and logistics tenants within the Polloc Freeport and Economic Zone.
+                    </p>
+                    <ul style="margin: 0; padding-left: 16px; color: #C9D1D9; font-size: 12px; line-height: 1.4;">
+                        <li><b>Section C:</b> Manufacturing & Halal Processing Hubs</li>
+                        <li><b>Section H:</b> Transportation, Warehousing & Port Logistics</li>
+                        <li><b>Section G:</b> Wholesale & Retail Trade Locators</li>
+                        <li><b>Section J:</b> Information & Communications Technology (ICT) Parks</li>
+                    </ul>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+
+        # Search & Filtering
+        st.markdown("### 🔍 Searchable Classification Directory")
+        c1, c2 = st.columns([1, 2])
         with c1:
             sections = sorted([str(s) for s in df_psic['Section'].dropna().unique()])
-            selected_sections = st.multiselect("Filter by Section:", options=sections, default=sections[:3] if len(sections)>=3 else sections)
+            selected_sections = st.multiselect("Filter by Section Code:", options=sections, default=sections[:3] if len(sections)>=3 else sections)
         with c2:
-            search_query = st.text_input("Search Description or Code:", placeholder="Enter keyword (e.g., manufacturing, transport, fishing)...")
+            search_query = st.text_input("Search Description, Code or Keyword:", placeholder="Enter keyword (e.g., manufacturing, transport, fishing, halal)...")
 
         df_psic_filtered = df_psic[df_psic['Section'].astype(str).isin(selected_sections)]
         if search_query:
@@ -654,7 +713,7 @@ elif nav_selection == "PSIC Industry Classification":
             df_psic_filtered = df_psic_filtered[mask]
 
         st.markdown(f"**Showing {len(df_psic_filtered):,} matching classification records**")
-        st.dataframe(df_psic_filtered, use_container_width=True, height=500)
+        st.dataframe(df_psic_filtered.drop(columns=['Section_Clean'], errors='ignore'), use_container_width=True, height=450)
     else:
         st.warning("`PSIC_rev 5.xlsx` was not found or contains no readable sheets.")
 
