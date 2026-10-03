@@ -809,7 +809,38 @@ elif nav_selection == "PSIC Industry Classification":
 
         st.markdown("---")
 
-        # 3. FILTERS AND TABLE REGISTRY
+        # 3. INTERACTIVE SECTION DRILL-DOWN & DIVISION CHECKLIST
+        st.subheader("🔍 Section & Division Industry Inspector")
+        st.markdown("Select any economic section below to inspect all its underlying divisions, descriptions, and classified records in detail.")
+
+        # Create dropdown options mapping Section Letter to Clean Name
+        section_options = {f"Section {row['Filled_Section']}: {row['Description']}": row['Filled_Section'] for _, row in sec_counts.iterrows()}
+        selected_sec_label = st.selectbox("Choose Section to Inspect:", options=list(section_options.keys()), index=list(section_options.values()).index('C'))
+        chosen_section_code = section_options[selected_sec_label]
+
+        # Filter dataset for the chosen section
+        df_chosen_sec = df_psic[df_psic['Filled_Section'] == chosen_section_code]
+        
+        # Display breakdown metrics for this section
+        m_col1, m_col2, m_col3 = st.columns(3)
+        with m_col1:
+            st.metric("Selected Section", f"Section {chosen_section_code}")
+        with m_col2:
+            st.metric("Total Classification Records", f"{len(df_chosen_sec):,}")
+        with m_col3:
+            div_count = df_chosen_sec['Division'].nunique()
+            st.metric("Distinct Industry Divisions", f"{div_count}")
+
+        # Show Division-level summary table if divisions exist
+        df_divs_only = df_chosen_sec[df_chosen_sec['Division'].notnull()][['Division', 'Description']].drop_duplicates().sort_values('Division')
+        if not df_divs_only.empty:
+            st.markdown(f"**Division Breakdown for Section {chosen_section_code}:**")
+            st.dataframe(df_divs_only.rename(columns={'Division': 'Division Code', 'Description': 'Division Description'}), use_container_width=True, height=300)
+
+        st.markdown("---")
+
+        # 4. FULL SEARCHABLE REGISTRY TABLE
+        st.subheader("📋 Complete Registry Table")
         c1, c2 = st.columns([1.2, 1.8])
         with c1:
             sections = sorted([str(s) for s in df_psic['Section'].dropna().unique()])
