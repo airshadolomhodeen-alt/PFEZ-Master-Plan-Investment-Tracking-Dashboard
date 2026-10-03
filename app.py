@@ -737,12 +737,12 @@ elif nav_selection == "PSIC Industry Classification":
         fig_psic.update_layout(
             title="<b>PSIC Classification Breakdown by Section</b> (Highlighted = Core Ecozone Sectors)",
             template="plotly_dark",
-            height=500,
-            margin=dict(l=10, r=10, t=40, b=10),
+            height=580,
+            margin=dict(l=40, r=20, t=50, b=20),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            xaxis=dict(title="Number of Records"),
-            yaxis=dict(title="")
+            xaxis=dict(title="Number of Records", gridcolor="#30363d"),
+            yaxis=dict(title="", automargin=True)
         )
         st.plotly_chart(fig_psic, use_container_width=True)
 
@@ -762,6 +762,14 @@ elif nav_selection == "PSIC Industry Classification":
 
         st.markdown(f"**Showing {len(df_psic_filtered):,}/{len(df_psic):,} matching classification records**")
         st.dataframe(df_psic_filtered.drop(columns=['Filled_Section']), use_container_width=True, height=450)
+
+        # Download button for filtered results
+        st.download_button(
+            label="📥 Export Filtered PSIC Data (CSV)",
+            data=df_psic_filtered.drop(columns=['Filled_Section']).to_csv(index=False).encode('utf-8'),
+            file_name="PFEZ_PSIC_Filtered_Sectors.csv",
+            mime="text/csv",
+        )
     else:
         st.warning("`PSIC_rev 5.xlsx` was not found or contains no readable sheets.")
 # ==========================================
