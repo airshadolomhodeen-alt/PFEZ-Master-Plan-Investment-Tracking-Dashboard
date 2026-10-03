@@ -674,22 +674,73 @@ elif nav_selection == "PSIC Industry Classification":
     st.title("🏭 Philippine Standard Industrial Classification (PSIC Rev. 5)")
     st.markdown(f"Searchable registry of economic sectors, divisions, and industry classes (Total Records: **{len(df_psic):,}**).")
 
+    # Ecozone relevance banner
+    st.markdown(
+        """
+        <div style="background-color: #161b22; border-left: 4px solid #58A6FF; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #30363d;">
+            <h4 style="margin: 0 0 6px 0; color: #58A6FF; font-size: 15px;">Freeport & Special Economic Zone Sector Alignment</h4>
+            <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.5;">
+                PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J & K)</b>. Use the distribution chart and filters below to explore regional investment sectors and associated technical skill requirements.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     if not df_psic.empty:
+        # Prepare data for summary chart
+        df_psic['Filled_Section'] = df_psic['Section'].ffill()
+        sec_counts = df_psic.groupby('Filled_Section').size().reset_index(name='Record_Count')
+        
+        # Map section letters to short descriptions
+        sec_desc_map = df_psic[df_psic['Section'].notna()].set_index('Section')['Description'].to_dict()
+        sec_counts['Description'] = sec_counts['Filled_Section'].map(sec_desc_map)
+        sec_counts['Display_Label'] = sec_counts['Filled_Section'] + ": " + sec_counts['Description'].str[:35] + "..."
+        sec_counts = sec_counts.sort_values(by='Record_Count', ascending=True)
+
+        # Highlight core ecozone sectors
+        ecozones_core = ['C', 'H', 'G', 'J', 'K', 'N']
+        sec_counts['Is_Core_Ecozone'] = sec_counts['Filled_Section'].isin(ecozones_core)
+        sec_counts['Color'] = sec_counts['Is_Core_Ecozone'].apply(lambda x: '#58A6FF' if x else '#30363d')
+
+        # Interactive Plotly Bar Chart
+        fig_psic = go.Figure(go.Bar(
+            y=sec_counts['Display_Label'],
+            x=sec_counts['Record_Count'],
+            orientation='h',
+            marker=dict(color=sec_counts['Color']),
+            text=sec_counts['Record_Count'],
+            textposition='auto'
+        ))
+        fig_psic.update_layout(
+            title="<b>PSIC Classification Breakdown by Section</b> (Highlighted = Core Ecozone Sectors)",
+            template="plotly_dark",
+            height=450,
+            margin=dict(l=10, r=10, t=40, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis=dict(title="Number of Records"),
+            yaxis=dict(title="")
+        )
+        st.plotly_chart(fig_psic, use_container_width=True)
+
+        st.markdown("---")
+
+        # Filters and Table
         c1, c2 = st.columns([1.2, 1.8])
         with c1:
             sections = sorted([str(s) for s in df_psic['Section'].dropna().unique()])
-            # Fixed: Default to all sections so the complete chart and full 1,791 records load instantly
             selected_sections = st.multiselect("Filter by Section:", options=sections, default=sections)
         with c2:
-            search_query = st.text_input("Search Description or Code:", placeholder="Enter keyword (e.g., manufacturing, transport, fishing)...")
+            search_query = st.text_input("Search Description or Code:", placeholder="Enter keyword (e.g., manufacturing, transport, port, fishing)...")
 
         df_psic_filtered = df_psic[df_psic['Section'].astype(str).isin(selected_sections)]
         if search_query:
             mask = df_psic_filtered.astype(str).apply(lambda row: row.str.contains(search_query, case=False, na=False).any(), axis=1)
             df_psic_filtered = df_psic_filtered[mask]
 
-        st.markdown(f"**Showing {len(df_psic_filtered):,} matching classification records**")
-        st.dataframe(df_psic_filtered, use_container_width=True, height=520)
+        st.markdown(f"**Showing {len(df_psic_filtered):,}/{len(df_psic):,} matching classification records**")
+        st.dataframe(df_psic_filtered.drop(columns=['Filled_Section']), use_container_width=True, height=450)
     else:
         st.warning("`PSIC_rev 5.xlsx` was not found or contains no readable sheets.")
 
