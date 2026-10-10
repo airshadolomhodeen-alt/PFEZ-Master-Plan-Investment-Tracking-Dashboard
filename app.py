@@ -25,49 +25,77 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-        /* Base Backgrounds */
-        .main { background-color: #0D1117; }
-        .block-container { padding-top: 0.8rem; padding-bottom: 1.5rem; padding-left: 1.5rem; padding-right: 1.5rem; }
-        h1, h2, h3, h4 { color: #F0F6FC; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        /* Base Theme & Executive Canvas */
+        .main { background-color: #0E1117; }
+        .block-container { 
+            padding-top: 0.8rem; 
+            padding-bottom: 1.5rem; 
+            padding-left: 1.5rem; 
+            padding-right: 1.5rem; 
+        }
+        h1, h2, h3, h4, h5, h6 { 
+            color: #F0F6FC; 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            letter-spacing: -0.01em;
+        }
         
-        /* Metric Styling */
+        /* Executive Metric Card Styling with Hover Animations */
         div[data-testid="stMetric"] {
             background-color: #161B22;
             border: 1px solid #30363D;
-            padding: 14px 18px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 16px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            transition: all 0.25s ease-in-out;
+        }
+        div[data-testid="stMetric"]:hover {
+            border-color: #0A84FF;
+            box-shadow: 0 6px 20px rgba(10, 132, 255, 0.15);
+            transform: translateY(-2px);
         }
         div[data-testid="stMetric"] label {
             color: #8B949E !important;
             font-size: 13px !important;
             font-weight: 500 !important;
+            letter-spacing: 0.02em;
         }
         div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-            color: #58A6FF !important;
-            font-size: 22px !important;
+            color: #0A84FF !important;
+            font-size: 24px !important;
             font-weight: 700 !important;
         }
 
-        /* Callout Box */
+        /* Executive Callout & Banner Containers */
         .callout-box {
             background: linear-gradient(135deg, #161B22 0%, #1F242C 100%);
-            border-left: 4px solid #58A6FF;
+            border-left: 4px solid #0A84FF;
             border-top: 1px solid #30363D;
             border-right: 1px solid #30363D;
             border-bottom: 1px solid #30363D;
-            padding: 16px 20px;
-            border-radius: 8px;
+            padding: 18px 22px;
+            border-radius: 10px;
             margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         /* Phase Card Box */
         .phase-card {
             background-color: #161B22;
             border: 1px solid #30363D;
-            border-radius: 8px;
-            padding: 14px;
+            border-radius: 10px;
+            padding: 16px;
             text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+        }
+        .phase-card:hover {
+            border-color: #38BDF8;
+        }
+
+        /* Sidebar Styling Enhancement */
+        [data-testid="stSidebar"] {
+            background-color: #0B0E14;
+            border-right: 1px solid #30363D;
         }
 
         /* Mobile Screen Responsiveness */
@@ -258,10 +286,10 @@ df_psic = load_psic_data()
 # ==========================================
 st.markdown(
     """
-    <div style="background-color: #161B22; padding: 18px 24px; border-radius: 8px; border: 1px solid #30363D; text-align: left; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+    <div style="background: linear-gradient(135deg, #161B22 0%, #0D1117 100%); padding: 20px 24px; border-radius: 10px; border: 1px solid #30363D; text-align: left; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.25);">
         <div>
-            <span style="background-color: #238636; color: #FFFFFF; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 12px; letter-spacing: 0.5px;">EXECUTIVE STRATEGY BRIEF FOR EVALUATORS</span>
-            <h2 style="color: #58A6FF; margin: 6px 0 2px 0; font-size: 22px; font-weight: 700;">POLLOC FREEPORT AND ECONOMIC ZONE (PFEZ)</h2>
+            <span style="background-color: #10B981; color: #FFFFFF; font-size: 10px; font-weight: bold; padding: 4px 10px; border-radius: 12px; letter-spacing: 0.5px;">EXECUTIVE STRATEGY BRIEF FOR EVALUATORS</span>
+            <h2 style="color: #0A84FF; margin: 8px 0 2px 0; font-size: 22px; font-weight: 700;">POLLOC FREEPORT AND ECONOMIC ZONE (PFEZ)</h2>
             <p style="color: #8B949E; margin: 0; font-size: 13px;">Master Development Plan Implementation & Technical Infrastructure Manpower Framework</p>
         </div>
         <div style="text-align: right;">
@@ -398,11 +426,11 @@ if nav_selection == "Dashboard Home":
     st.markdown(
         f"""
         <div class="callout-box">
-            <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <div style="display: flex; align-items: flex-start; gap: 14px;">
                 <span style="font-size: 24px;">🏗</span>
                 <div>
-                    <h4 style="margin: 0 0 4px 0; color: #58A6FF; font-size: 15px;">STRATEGIC JUSTIFICATION FOR TECHNICAL ENGINEERING MANPOWER EXPANSION</h4>
-                    <p style="margin: 0; color: #C9D1D9; font-size: 12px; line-height: 1.5;">
+                    <h4 style="margin: 0 0 4px 0; color: #0A84FF; font-size: 15px;">STRATEGIC JUSTIFICATION FOR TECHNICAL ENGINEERING MANPOWER EXPANSION</h4>
+                    <p style="margin: 0; color: #C9D1D9; font-size: 12.5px; line-height: 1.5;">
                         The PFEZ Master Development Plan commits <b>PhP {df_master['Cost_PhP_B'].sum():.3f} Billion</b> across <b>{len(df_master)} Programs and Projects (PAPs)</b> structured into <b>4 Implementation Phases (2026–2040)</b>. Executing <b>Phase 1 (39 Immediate PAPs)</b> requires technical reinforcement: <b>one Engineer V, one Engineer III, and two Engineer I positions</b>. Without direct engineering oversight, project execution delays threaten foundational works and projected revenue trajectories.
                     </p>
                 </div>
@@ -438,8 +466,8 @@ if nav_selection == "Dashboard Home":
         p1_m = phase_summary[phase_summary['Phase'].str.contains('Phase 1')]
         st.markdown(
             f"""
-            <div class="phase-card" style="border-top: 4px solid #58A6FF;">
-                <span style="background-color: #1F6FE5; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 1 (2026–2030)</span>
+            <div class="phase-card" style="border-top: 4px solid #0A84FF;">
+                <span style="background-color: #0A84FF; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 1 (2026–2030)</span>
                 <h3 style="color: #58A6FF; margin: 8px 0 2px 0; font-size: 18px;">PhP {p1_m['Total_Budget_B'].values[0]:,.3f} Billion</h3>
                 <p style="color: #8B949E; margin: 0; font-size: 11px;"><b>{p1_m['PAPs_Count'].values[0]} PAPs</b> | Institutional Setup, BOSS & Baselines</p>
             </div>
@@ -451,9 +479,9 @@ if nav_selection == "Dashboard Home":
         p2_m = phase_summary[phase_summary['Phase'].str.contains('Phase 2')]
         st.markdown(
             f"""
-            <div class="phase-card" style="border-top: 4px solid #F0883E;">
-                <span style="background-color: #D25D11; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 2 (2029–2035)</span>
-                <h3 style="color: #F0883E; margin: 8px 0 2px 0; font-size: 18px;">PhP {p2_m['Total_Budget_B'].values[0]:,.3f} Billion</h3>
+            <div class="phase-card" style="border-top: 4px solid #F59E0B;">
+                <span style="background-color: #F59E0B; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 2 (2029–2035)</span>
+                <h3 style="color: #F59E0B; margin: 8px 0 2px 0; font-size: 18px;">PhP {p2_m['Total_Budget_B'].values[0]:,.3f} Billion</h3>
                 <p style="color: #8B949E; margin: 0; font-size: 11px;"><b>{p2_m['PAPs_Count'].values[0]} PAPs</b> | Container Yard & Halal Processing Hub</p>
             </div>
             """,
@@ -477,9 +505,9 @@ if nav_selection == "Dashboard Home":
         p4_m = phase_summary[phase_summary['Phase'].str.contains('Phase 4')]
         st.markdown(
             f"""
-            <div class="phase-card" style="border-top: 4px solid #238636;">
-                <span style="background-color: #238636; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 4 (2035–2040)</span>
-                <h3 style="color: #2EA043; margin: 8px 0 2px 0; font-size: 18px;">PhP {p4_m['Total_Budget_B'].values[0]:,.3f} Billion</h3>
+            <div class="phase-card" style="border-top: 4px solid #10B981;">
+                <span style="background-color: #10B981; color: #FFF; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">PHASE 4 (2035–2040)</span>
+                <h3 style="color: #10B981; margin: 8px 0 2px 0; font-size: 18px;">PhP {p4_m['Total_Budget_B'].values[0]:,.3f} Billion</h3>
                 <p style="color: #8B949E; margin: 0; font-size: 11px;"><b>{p4_m['PAPs_Count'].values[0]} PAPs</b> | IT Park & Eco-Tourism Development</p>
             </div>
             """,
@@ -500,7 +528,7 @@ if nav_selection == "Dashboard Home":
             template="plotly_dark",
             height=330,
             color="Phase",
-            color_discrete_sequence=["#58A6FF", "#F0883E", "#A371F7", "#238636"]
+            color_discrete_sequence=["#0A84FF", "#F59E0B", "#A371F7", "#10B981"]
         )
         fig_phase.update_layout(
             margin=dict(l=10, r=10, t=40, b=10),
@@ -560,11 +588,11 @@ if nav_selection == "Dashboard Home":
         trend_line = slope * x_numeric + intercept
         
         trend_status = "📈 UPTREND (+PhP 3.34k/mo)" if slope > 0 else "📉 DOWNTREND"
-        trend_color = "#238636" if slope > 0 else "#DA3633"
+        trend_color = "#10B981" if slope > 0 else "#EF4444"
 
         st.markdown(
             f"""
-            <div style="background-color: #161B22; border: 1px solid #30363D; padding: 10px 14px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="background-color: #161B22; border: 1px solid #30363D; padding: 10px 14px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <span style="font-size: 11px; color: #8B949E;">Baseline Historical Collection Trend:</span><br>
                     <span style="font-size: 16px; font-weight: bold; color: {trend_color};">{trend_status}</span>
@@ -584,7 +612,7 @@ if nav_selection == "Dashboard Home":
                 y=df_rev["Collected_Revenue"],
                 mode="lines+markers",
                 name="Monthly Collection",
-                line=dict(color="#58A6FF", width=2),
+                line=dict(color="#0A84FF", width=2),
                 marker=dict(size=4),
             )
         )
@@ -636,7 +664,16 @@ elif nav_selection == "Investment Phasing (Phases 1–4)":
         df_phase_view = df_master[df_master['Phase'] == selected_phase]
 
     st.markdown(f"**Displaying {len(df_phase_view)} PAPs | Total Budget: PhP {df_phase_view['Cost_PhP_B'].sum():,.3f} Billion**")
-    st.dataframe(df_phase_view[["PROJECT NO.", "PROJECT TITLE", "SECTOR", "CATEGORY", "Phase", "PCM Stage", "ESTIMATE AMOUNT"]], use_container_width=True, height=450)
+    
+    st.dataframe(
+        df_phase_view[["PROJECT NO.", "PROJECT TITLE", "SECTOR", "CATEGORY", "Phase", "PCM Stage", "ESTIMATE AMOUNT"]], 
+        use_container_width=True, 
+        height=450,
+        column_config={
+            "PROJECT NO.": st.column_config.NumberColumn("PAP No.", format="%d"),
+            "ESTIMATE AMOUNT": st.column_config.TextColumn("Estimate Amount (PhP)")
+        }
+    )
 
 # ==========================================
 # MODULE 3: MASTER PLAN PROJECTS DIRECTORY VIEW
@@ -664,7 +701,11 @@ elif nav_selection == "Master Plan Projects Directory":
     st.dataframe(
         df_filtered[["PROJECT NO.", "PROJECT TITLE", "SECTOR", "CATEGORY", "Phase", "PCM Stage", "ESTIMATE AMOUNT"]],
         use_container_width=True,
-        height=480
+        height=480,
+        column_config={
+            "PROJECT NO.": st.column_config.NumberColumn("PAP No.", format="%d"),
+            "ESTIMATE AMOUNT": st.column_config.TextColumn("Estimate Amount (PhP)")
+        }
     )
 
 # ==========================================
@@ -706,8 +747,8 @@ elif nav_selection == "PSIC Industry Classification":
     # Ecozone relevance banner
     st.markdown(
         """
-        <div style="background-color: #161b22; border-left: 4px solid #58A6FF; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #30363d;">
-            <h4 style="margin: 0 0 6px 0; color: #58A6FF; font-size: 15px;">Freeport & Special Economic Zone Sector Alignment</h4>
+        <div style="background-color: #161b22; border-left: 4px solid #0A84FF; padding: 14px 16px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #30363d;">
+            <h4 style="margin: 0 0 6px 0; color: #0A84FF; font-size: 15px;">Freeport & Special Economic Zone Sector Alignment</h4>
             <p style="margin: 0; color: #C9D1D9; font-size: 13px; line-height: 1.5;">
                 PFEZ and BEZA locators primarily draw from key industrial classifications including <b>Manufacturing (Section C)</b>, <b>Transportation & Storage (Section H)</b>, and <b>IT & Technical Services (Sections J, K, M)</b>. Explore the structural density and market share distribution below. Click any block in the map to inspect its divisions.
             </p>
@@ -728,7 +769,7 @@ elif nav_selection == "PSIC Industry Classification":
         # Highlight core ecozone sectors
         ecozones_core = ['C', 'H', 'G', 'J', 'K', 'M', 'N']
         sec_counts['Is_Core_Ecozone'] = sec_counts['Filled_Section'].isin(ecozones_core)
-        sec_counts['Color'] = sec_counts['Is_Core_Ecozone'].apply(lambda x: '#58A6FF' if x else '#30363d')
+        sec_counts['Color'] = sec_counts['Is_Core_Ecozone'].apply(lambda x: '#0A84FF' if x else '#30363d')
 
         # 1. PRIMARY VIEW: Executive Bar Chart & Donut Summary Layout
         chart_col1, chart_col2 = st.columns([1.6, 1], gap="medium")
@@ -764,7 +805,7 @@ elif nav_selection == "PSIC Industry Classification":
                 values='Record_Count', 
                 hole=0.55,
                 color='Category',
-                color_discrete_map={'Core Ecozone Sectors': '#58A6FF', 'Other Sectors': '#30363d'}
+                color_discrete_map={'Core Ecozone Sectors': '#0A84FF', 'Other Sectors': '#30363d'}
             )
             fig_donut.update_layout(
                 title="<b>Ecozone vs. Other Share</b>",
@@ -867,6 +908,7 @@ elif nav_selection == "PSIC Industry Classification":
         st.dataframe(df_psic_filtered.drop(columns=['Filled_Section']), use_container_width=True, height=450)
     else:
         st.warning("`PSIC_rev 5.xlsx` was not found or contains no readable sheets.")
+
 # ==========================================
 # MODULE: MANPOWER JUSTIFICATION
 # ==========================================
@@ -876,8 +918,8 @@ elif nav_selection == "Manpower Justification":
 
     st.markdown(
         """
-        <div style="background-color: #161b22; border-left: 4px solid #58A6FF; padding: 16px; border-radius: 6px; margin-bottom: 24px; border: 1px solid #30363d;">
-            <h4 style="margin: 0 0 8px 0; color: #58A6FF; font-size: 16px;">Core Technical Rationale for Evaluators</h4>
+        <div style="background-color: #161b22; border-left: 4px solid #0A84FF; padding: 16px; border-radius: 8px; margin-bottom: 24px; border: 1px solid #30363d;">
+            <h4 style="margin: 0 0 8px 0; color: #0A84FF; font-size: 16px;">Core Technical Rationale for Evaluators</h4>
             <p style="margin: 0; color: #C9D1D9; font-size: 13.5px; line-height: 1.6;">
                 Executing complex infrastructure, port extension, environmental baselines, and institutional development across <b>Phase 1 (39 Immediate PAPs) through Phase 4</b> requires an agile, certified technical workforce. Approving the requested headcount—<b>Engineer V (Division Lead), Engineer III (Senior Technical Lead), and two Engineer I positions (Field Supervision & QA/QC Engineers)</b>—ensures robust project supervision, timely procurement, and high-quality civil engineering execution across all 95 PAPs.
             </p>
@@ -892,21 +934,20 @@ elif nav_selection == "Manpower Justification":
         st.markdown("### Executive Headcount Allocation")
         st.markdown("Summary of requested engineering personnel distribution:")
         
-        # Professional metric cards instead of a basic bar chart for integers of 1 and 2
         st.markdown(
             """
             <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
-                <div style="background: #111418; border: 1px solid #30363d; padding: 12px 16px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-                    <div><strong style="color: #58A6FF;">Engineer V</strong><br><span style="font-size: 12px; color: #8b949e;">Division Chief / Strategic Lead</span></div>
-                    <span style="background: #1f6feb; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px;">1 Slot</span>
+                <div style="background: #111418; border: 1px solid #30363d; padding: 12px 16px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div><strong style="color: #0A84FF;">Engineer V</strong><br><span style="font-size: 12px; color: #8b949e;">Division Chief / Strategic Lead</span></div>
+                    <span style="background: #0A84FF; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px;">1 Slot</span>
                 </div>
-                <div style="background: #111418; border: 1px solid #30363d; padding: 12px 16px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-                    <div><strong style="color: #58A6FF;">Engineer III</strong><br><span style="font-size: 12px; color: #8b949e;">Senior Project / Technical Lead</span></div>
-                    <span style="background: #1f6feb; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px;">1 Slot</span>
+                <div style="background: #111418; border: 1px solid #30363d; padding: 12px 16px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div><strong style="color: #0A84FF;">Engineer III</strong><br><span style="font-size: 12px; color: #8b949e;">Senior Project / Technical Lead</span></div>
+                    <span style="background: #0A84FF; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px;">1 Slot</span>
                 </div>
-                <div style="background: #111418; border: 1px solid #30363d; padding: 12px 16px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-                    <div><strong style="color: #58A6FF;">Engineer I (Field)</strong><br><span style="font-size: 12px; color: #8b949e;">Civil Works Supervision</span></div>
-                    <span style="background: #238636; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px;">2 Slots</span>
+                <div style="background: #111418; border: 1px solid #30363d; padding: 12px 16px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div><strong style="color: #0A84FF;">Engineer I (Field)</strong><br><span style="font-size: 12px; color: #8b949e;">Civil Works Supervision</span></div>
+                    <span style="background: #10B981; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px;">2 Slots</span>
                 </div>
             </div>
             """,
@@ -959,7 +1000,7 @@ elif nav_selection == "Revenue Analytics & Forecasting":
                 label="Marginal Revenue (ΔTR)",
                 value=f"PhP {marginal_val:,.2f}",
                 delta=f"{marginal_val:,.2f} MoM",
-                delta_color="normal"  # Automatically handles green up-arrow or red down-arrow
+                delta_color="normal"
             )
         with col3:
             st.metric(
@@ -989,10 +1030,10 @@ elif nav_selection == "Revenue Analytics & Forecasting":
     ma_3m = pd.Series(y_vals).rolling(window=3, min_periods=1).mean().values
 
     fig_hist = go.Figure()
-    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=[mean_val] * len(df_rev), mode="lines", name="Historical Mean ± 1σ", line=dict(color="#238636", width=1.5, dash="dash")))
+    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=[mean_val] * len(df_rev), mode="lines", name="Historical Mean ± 1σ", line=dict(color="#10B981", width=1.5, dash="dash")))
     fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=trend_line, mode="lines", name="OLS Trend", line=dict(color="#10B981", width=2)))
     fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=ma_3m, mode="lines", name="3-Month Moving Average", line=dict(color="#F59E0B", width=2)))
-    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=y_vals, mode="lines+markers", name="Actual Revenue", line=dict(color="#38BDF8", width=2.5), marker=dict(size=5)))
+    fig_hist.add_trace(go.Scatter(x=df_rev["Date"], y=y_vals, mode="lines+markers", name="Actual Revenue", line=dict(color="#0A84FF", width=2.5), marker=dict(size=5)))
 
     fig_hist.add_annotation(x=df_rev["Date"].iloc[-1], y=2.5e6, text="Target: PhP 2.50M", showarrow=False, xshift=40, font=dict(color="#EF4444", size=11))
     fig_hist.update_layout(
@@ -1042,7 +1083,7 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         fig_mrpl.add_trace(go.Scatter(x=fte_range, y=mcl_line, mode="lines", name="Marginal Cost ($MC_L$)", line=dict(color="#EF4444", width=2, dash="dash")))
 
         current_mrpl_val = current_prod - (current_fte * 1500) if current_fte > 0 else current_prod
-        fig_mrpl.add_trace(go.Scatter(x=[current_fte], y=[current_mrpl_val], mode="markers", name="Selected Workforce", marker=dict(size=10, color="#38BDF8", symbol="diamond")))
+        fig_mrpl.add_trace(go.Scatter(x=[current_fte], y=[current_mrpl_val], mode="markers", name="Selected Workforce", marker=dict(size=10, color="#0A84FF", symbol="diamond")))
 
         fig_mrpl.update_layout(
             template="plotly_dark", height=290, margin=dict(l=10, r=10, t=10, b=10),
@@ -1056,12 +1097,10 @@ elif nav_selection == "Revenue Analytics & Forecasting":
     with col_sim_r:
         st.markdown("#### ⚖️ Microeconomic Labor Decision Tool")
         
-        # Interactive Simulation Sliders
         labor_addition = st.slider("Simulate Additional Infrastructure Workforce (FTEs)", 0, 50, 10, key="labor_fte_slider")
         base_productivity = st.slider("Marginal Product Scaling Factor", 100000, 200000, 125000, step=5000, key="prod_slider")
         wage_rate = st.slider("Monthly Wage per FTE ($MC_L$, PhP)", 30000, 70000, 45000, step=2500, key="wage_slider")
 
-        # Calculations
         avg_wage_cost = labor_addition * wage_rate
         est_marginal_lease_gain = labor_addition * base_productivity
         net_marginal_profit = est_marginal_lease_gain - avg_wage_cost
@@ -1078,7 +1117,6 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         else:
             st.warning("⚠️ **Caution:** Diminishing returns. Wage costs exceed marginal lease yield.")
 
-        # Automated Equilibrium & ROI Calculations
         optimal_fte = max(1, int((base_productivity - wage_rate) / 1500))
         current_mrpl_val_calc = base_productivity - (labor_addition * 1500) if labor_addition > 0 else base_productivity
         labor_roi = ((current_mrpl_val_calc - wage_rate) / wage_rate) * 100
@@ -1113,6 +1151,7 @@ elif nav_selection == "Revenue Analytics & Forecasting":
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(color="white", size=12))
     )
     st.plotly_chart(fig_fore, use_container_width=True)
+
 # ==========================================
 # MODULE 6: SPATIAL MAP VIEWER
 # ==========================================
